@@ -19,7 +19,7 @@ export interface ProductVariant {
 
 export interface Product {
   id: string;
-  productId?: number;
+  productId: string;
   name: string;
   description: string;
   price: number;
@@ -44,9 +44,27 @@ interface ProductState {
   clearSelectedProduct: () => void;
 }
 
-const transformProduct = (product: any): Product => ({
+interface ApiProduct {
+  _id: string;
+  productId: string;
+  name: string;
+  description: string;
+  price: number;
+  rating: number;
+  image: string;
+  originalPrice?: number;
+  badge?: string;
+  category: string;
+  stock?: number;
+  features?: string[];
+  variants?: ProductVariant[];
+  sizes?: string[];
+}
+
+const transformProduct = (product: ApiProduct): Product => ({
   ...product,
-  id: product.productId ? String(product.productId) : product._id || product.id,
+  id: product.productId,
+  category: product.category as Category,
 });
 
 export const useProductStore = create<ProductState>((set) => ({
@@ -61,8 +79,8 @@ export const useProductStore = create<ProductState>((set) => ({
       const response = await axiosInstance.get("/products");
       const products = response.data.data.map(transformProduct);
       set({ products, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch {
+      set({ error: "Failed to fetch products", isLoading: false });
     }
   },
 
@@ -72,8 +90,8 @@ export const useProductStore = create<ProductState>((set) => ({
       const response = await axiosInstance.get(`/products/${id}`);
       const product = transformProduct(response.data.data);
       set({ selectedProduct: product, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch {
+      set({ error: "Failed to fetch product", isLoading: false });
     }
   },
 

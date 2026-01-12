@@ -5,11 +5,13 @@ interface User {
   _id: string;
   email: string;
   name?: string;
+  isAdmin?: boolean;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   authUser: User | null;
+  isAdmin: boolean;
   isLoading: boolean;
   error: string | null;
   login: (credentials: { email: string; password: string }) => Promise<void>;
@@ -25,22 +27,29 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   authUser: null,
+  isAdmin: false,
   isLoading: false,
   error: null,
 
   login: async (credentials: { email: string; password: string }) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axiosInstance.post<any>("/log-in", credentials);
+      const response = await axiosInstance.post<{ data: { user: User; token: string } }>("/log-in", credentials);
       if (response.data.data) {
         const data = response.data.data;
         localStorage.setItem("authUser", JSON.stringify(data.user));
         localStorage.setItem("token", data.token);
-        set({ isAuthenticated: true, authUser: data.user, isLoading: false });
+        set({
+          isAuthenticated: true,
+          authUser: data.user,
+          isAdmin: data.user.isAdmin || false,
+          isLoading: false,
+        });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       const message =
-        error.response?.data?.message ||
+        err.response?.data?.message ||
         "Login failed. Please check your credentials.";
       set({ error: message, isLoading: false });
       throw error;
@@ -53,16 +62,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   }) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axiosInstance.post<any>("/register", credentials);
+      const response = await axiosInstance.post<{ data: { user: User } }>("/register", credentials);
       if (response.data.data) {
-        const user = response.data.data.user;
-        localStorage.setItem("authUser", JSON.stringify(user));
-        localStorage.setItem("token", response.data.data.token || "");
-        set({ isAuthenticated: true, authUser: user, isLoading: false });
+        window.location.href = "/login";
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       const message =
-        error.response?.data?.message ||
+        err.response?.data?.message ||
         "Registration failed. Please try again.";
       set({ error: message, isLoading: false });
       throw error;
@@ -72,7 +79,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem("authUser");
     localStorage.removeItem("token");
-    set({ isAuthenticated: false, authUser: null, error: null });
+    set({
+      isAuthenticated: false,
+      authUser: null,
+      isAdmin: false,
+      error: null,
+    });
   },
 
   initializeAuth: () => {
@@ -80,10 +92,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
-        set({ isAuthenticated: true, authUser: user });
+        set({
+          isAuthenticated: true,
+          authUser: user,
+          isAdmin: user.isAdmin || false,
+        });
       } catch (e) {
         localStorage.removeItem("authUser");
-        set({ isAuthenticated: false, authUser: null });
+        set({ isAuthenticated: false, authUser: null, isAdmin: false });
         console.error("Error in initializeAuth", e);
       }
     }

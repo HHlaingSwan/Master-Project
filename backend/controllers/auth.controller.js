@@ -18,15 +18,24 @@ export const register = async (req, res) => {
 
     const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
-    const token = jwt.sign({ userId: newUser._id }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
 
     const { password: pwd, ...userWithoutPassword } = newUser.toObject();
+
+    const token = jwt.sign(
+      { userId: newUser._id, isAdmin: newUser.isAdmin },
+      JWT_SECRET,
+      {
+        expiresIn: JWT_EXPIRES_IN,
+      }
+    );
 
     res.status(201).send({
       success: true,
       message: "User created successfully",
+      data: {
+        user: userWithoutPassword,
+        token,
+      },
     });
   } catch (error) {
     res.status(500).send({ message: "Error in register", error });
@@ -49,9 +58,13 @@ export const login = async (req, res) => {
     // Exclude password from response
     const { password: pwd, ...userWithoutPassword } = user.toObject();
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
+    const token = jwt.sign(
+      { userId: user._id, isAdmin: user.isAdmin },
+      JWT_SECRET,
+      {
+        expiresIn: JWT_EXPIRES_IN,
+      }
+    );
     res.status(200).send({
       success: true,
       message: "User logged in successfully",
