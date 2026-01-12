@@ -11,9 +11,11 @@ import { Button } from "./ui/button";
 import { Search, ShoppingCart, Trash2, Minus, Plus } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { Link } from "react-router-dom";
+import { useAuthStore } from "@/store/auth";
 
 const Navbar: React.FC = () => {
   const { items, removeFromCart, updateQuantity } = useCartStore();
+  const { isAuthenticated, logout } = useAuthStore();
 
   const cartTotal = items.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -163,14 +165,21 @@ const Navbar: React.FC = () => {
               </SheetContent>
             </Sheet>
 
-            <Link to="/login">
-              <Button variant="ghost" className="hidden sm:inline-flex">
-                Login
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button>Sign Up</Button>
-            </Link>
+            {isAuthenticated ? (
+              <Button onClick={() => logout()}>Log Out</Button>
+            ) : (
+              <>
+                {" "}
+                <Link to="/login">
+                  <Button variant="ghost" className="hidden sm:inline-flex">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button>Sign Up</Button>
+                </Link>{" "}
+              </>
+            )}
           </div>
         </div>
       </div>

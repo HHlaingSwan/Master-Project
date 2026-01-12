@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,8 +15,19 @@ import { Mail, Lock, LogIn } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 
 const Login: React.FC = () => {
-  const { isAuthenticated, login } = useAuthStore();
+  const { isAuthenticated, login, isLoading, error, initializeAuth } =
+    useAuthStore();
   const navigate = useNavigate();
+
+  const [credentials, setCredentials] = useState({
+    email: "",
+    password: "",
+  });
+  const [localError, setLocalError] = useState("");
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -24,10 +35,33 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleLogin = () => {
-    // In a real application, you would perform authentication here
-    login();
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCredentials((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    if (localError) setLocalError("");
   };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!credentials.email || !credentials.password) {
+      setLocalError("Please fill in all fields");
+      return;
+    }
+
+    setLocalError("");
+
+    try {
+      await login(credentials);
+    } catch {
+      setLocalError(error || "Login failed. Please check your credentials.");
+    }
+  };
+
+  const displayError = localError || error;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 px-4">
@@ -42,7 +76,12 @@ const Login: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
-          <form className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
+            {displayError && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {displayError}
+              </div>
+            )}
             <div className="space-y-2">
               <Label
                 htmlFor="email"
@@ -54,9 +93,13 @@ const Login: React.FC = () => {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
+                  value={credentials.email}
+                  onChange={handleInputChange}
                   placeholder="name@example.com"
                   className="pl-10 h-11 bg-slate-50 border-slate-200 focus:border-primary focus:ring-primary"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -71,16 +114,26 @@ const Login: React.FC = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   id="password"
+                  name="password"
                   type="password"
+                  value={credentials.password}
+                  onChange={handleInputChange}
                   placeholder="Enter your password"
                   className="pl-10 h-11 bg-slate-50 border-slate-200 focus:border-primary focus:ring-primary"
+                  disabled={isLoading}
                 />
               </div>
             </div>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-3 pt-2">
-          <Button className="w-full h-11 font-medium" onClick={handleLogin}>Sign In</Button>
+          <Button
+            className="w-full h-11 font-medium"
+            onClick={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? "Signing In..." : "Sign In"}
+          </Button>
           <p className="text-sm text-slate-600 text-center">
             Don't have an account?{" "}
             <Link
