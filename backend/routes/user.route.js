@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { getUserById, getUsers } from "../controllers/user.controller.js";
 import authorize from "../middleware/auth.middleware.js";
+import arcjetMiddleware from "../middleware/arcjet.middleware.js";
 
 const userRouter = Router();
+userRouter.use(arcjetMiddleware);
 
 userRouter.use(authorize);
 

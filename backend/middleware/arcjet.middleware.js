@@ -1,44 +1,51 @@
-import { aj } from "../config/arcjet.js";
+import { isSpoofedBot } from "@arcjet/inspect";
+import aj from "../config/arcjet.js";
 
 const arcjetMiddleware = async (req, res, next) => {
-    try {
-        const decision = await aj.protect(req, { requested: 10 }); // Deduct 10 tokens from the bucket
-        console.log("Arcjet decision", decision);
+  try {
+    const decision = await aj.protect(req);
+    // If the decision indicates the request is denied, return the proper response
+    if (decision.isDenied()) {
+      // Rate limit denial -> 429
+      if (
+        decision.reason &&
+        typeof decision.reason.isRateLimit === "function" &&
+        decision.reason.isRateLimit()
+      ) {
+        return res
+          .status(429)
+          .json({ message: "Too many requests. Please try again later." });
+      }
 
-        if (decision.isDenied()) {
-            if (decision.reason.isRateLimit()) {
-                res.writeHead(429, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ error: "Too Many Requests" }));
-                // } else if (decision.reason.isBot()) {
-                //     res.writeHead(403, { "Content-Type": "application/json" });
-                //     res.end(JSON.stringify({ error: "No bots allowed" }));
-                // } else {
-                //     res.writeHead(403, { "Content-Type": "application/json" });
-                //     res.end(JSON.stringify({ error: "Forbidden" }));
-            }
-        } else if (decision.ip.isHosting()) {
-            // Requests from hosting IPs are likely from bots, so they can usually be
-            // blocked. However, consider your use case - if this is an API endpoint
-            // then hosting IPs might be legitimate.
-            // https://docs.arcjet.com/blueprints/vpn-proxy-detection
-            res.writeHead(403, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Forbidden" }));
-        } else if (decision.results.some(isSpoofedBot)) {
-            // Paid Arcjet accounts include additional verification checks using IP data.
-            // Verification isn't always possible, so we recommend checking the decision
-            // separately.
-            // https://docs.arcjet.com/bot-protection/reference#bot-verification
-            res.writeHead(403, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Forbidden" }));
-        } else {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ message: "Hello World" }));
-        }
-    } catch (error) {
-        console.error("Arcjet middleware error:", error);
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Internal Server Error" }));
+      // Bot denial -> 403
+      if (
+        decision.reason &&
+        typeof decision.reason.isBot === "function" &&
+        decision.reason.isBot()
+      ) {
+        return res.status(403).json({ message: "Bot Access denied." });
+      }
+
+      // Any other denial -> 403
+      return res.status(403).json({
+        message: "Access denied due to suspicious activity.",
+      });
     }
-}
+
+    // If not denied, continue but still check for spoofed bot signals in results
+    if (decision.results && decision.results.some(isSpoofedBot)) {
+      return res.status(403).json({
+        error: "Spoofed Bot Detected",
+        message: "Malicious bot activity detected. Access denied.",
+      });
+    }
+
+    // Allowed: proceed to next middleware/handler
+    next();
+  } catch (error) {
+    console.error("Arcjet middleware error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export default arcjetMiddleware;

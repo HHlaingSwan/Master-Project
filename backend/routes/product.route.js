@@ -7,8 +7,10 @@ import {
   deleteProduct,
 } from "../controllers/product.controller.js";
 import { authorize, isAdmin } from "../middleware/auth.middleware.js";
+import arcjetMiddleware from "../middleware/arcjet.middleware.js";
 
 const productRouter = Router();
+productRouter.use(arcjetMiddleware);
 
 productRouter.get("/products", authorize, getAllProducts);
 productRouter.get("/products/:id", authorize, getProductById);

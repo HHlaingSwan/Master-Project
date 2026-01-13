@@ -1,5 +1,4 @@
-import React from "react";
-import { Input } from "@/components/ui/input";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -8,20 +7,58 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "./ui/button";
-import { Search, ShoppingCart, Trash2, Minus, Plus, LayoutDashboard } from "lucide-react";
+import {
+  ShoppingCart,
+  Trash2,
+  Minus,
+  Plus,
+  LayoutDashboard,
+  User,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { useCartStore } from "@/store/cart";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 
 const Navbar: React.FC = () => {
   const { items, removeFromCart, updateQuantity } = useCartStore();
-  const { isAuthenticated, isAdmin, logout } = useAuthStore();
+  const { isAuthenticated, authUser, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const cartTotal = items.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
   );
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    setShowProfileMenu(false);
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
@@ -31,22 +68,13 @@ const Navbar: React.FC = () => {
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-lg flex items-center justify-center">
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <span className="text-lg sm:text-xl font-bold text-slate-900">ShopZone</span>
+            <span className="text-lg sm:text-xl font-bold text-slate-900">
+              ShopZone
+            </span>
           </Link>
 
-          <div className="hidden lg:flex flex-1 max-w-lg mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                type="search"
-                placeholder="Search products..."
-                className="w-full pl-10 h-10 bg-slate-100 border-0 rounded-full focus-visible:ring-1"
-              />
-            </div>
-          </div>
-
           <div className="flex items-center gap-2 sm:space-x-3">
-            {isAdmin && (
+            {authUser?.isAdmin && (
               <Link to="/dashboard" className="hidden sm:block">
                 <Button variant="ghost" size="sm">
                   <LayoutDashboard className="w-4 h-4 mr-1.5 sm:mr-2" />
@@ -57,7 +85,11 @@ const Navbar: React.FC = () => {
 
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="relative h-9 w-9 sm:h-10 sm:w-10"
+                >
                   <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                   {cartItemCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-primary text-white text-[10px] sm:text-xs font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center">
@@ -78,8 +110,12 @@ const Navbar: React.FC = () => {
                   {items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-500">
                       <ShoppingCart className="w-16 h-16 sm:w-20 sm:h-20 mb-4 text-slate-200" />
-                      <p className="text-base sm:text-lg font-medium">Your cart is empty</p>
-                      <p className="text-sm text-slate-400">Add items to get started</p>
+                      <p className="text-base sm:text-lg font-medium">
+                        Your cart is empty
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        Add items to get started
+                      </p>
                     </div>
                   ) : (
                     <ul className="space-y-3">
@@ -170,13 +206,61 @@ const Navbar: React.FC = () => {
             </Sheet>
 
             {isAuthenticated ? (
-              <Button size="sm" className="text-xs sm:text-sm h-9 sm:h-10" onClick={() => logout()}>
-                Log Out
-              </Button>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
+                >
+                  {getInitials(authUser?.name)}
+                </button>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <p className="font-semibold text-slate-900">
+                        {authUser?.name}
+                      </p>
+                      <p className="text-sm text-slate-500 truncate">
+                        {authUser?.email}
+                      </p>
+                    </div>
+
+                    <Link
+                      to="/profile"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      Profile
+                    </Link>
+
+                    <Link
+                      to="/orders"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      My Orders
+                    </Link>
+
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link to="/login">
-                  <Button variant="ghost" size="sm" className="text-xs sm:text-sm h-9 sm:h-10 px-2 sm:px-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs sm:text-sm h-9 sm:h-10 px-2 sm:px-3"
+                  >
                     Login
                   </Button>
                 </Link>
@@ -188,17 +272,6 @@ const Navbar: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="lg:hidden px-3 sm:px-4 pb-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search products..."
-            className="w-full pl-10 h-10 bg-slate-100 border-0 rounded-full text-sm"
-          />
         </div>
       </div>
     </nav>

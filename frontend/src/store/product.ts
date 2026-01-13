@@ -34,14 +34,31 @@ export interface Product {
   sizes?: string[];
 }
 
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 interface ProductState {
   products: Product[];
   selectedProduct: Product | null;
   isLoading: boolean;
+  isPaginationLoading: boolean;
   error: string | null;
-  fetchProducts: () => Promise<void>;
+  pagination: Pagination;
+  currentPage: number;
+  fetchProducts: (
+    page?: number,
+    category?: Category,
+    search?: string
+  ) => Promise<void>;
   fetchProductById: (id: string) => Promise<void>;
   clearSelectedProduct: () => void;
+  setPage: (page: number) => void;
 }
 
 interface ApiProduct {
@@ -61,26 +78,59 @@ interface ApiProduct {
   sizes?: string[];
 }
 
+interface ApiResponse {
+  data: ApiProduct[];
+  pagination: Pagination;
+}
+
 const transformProduct = (product: ApiProduct): Product => ({
   ...product,
   id: product.productId,
   category: product.category as Category,
 });
 
-export const useProductStore = create<ProductState>((set) => ({
+export const useProductStore = create<ProductState>((set, get) => ({
   products: [],
   selectedProduct: null,
   isLoading: false,
+  isPaginationLoading: false,
   error: null,
+  pagination: {
+    total: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
+  currentPage: 1,
 
-  fetchProducts: async () => {
-    set({ isLoading: true, error: null });
+  fetchProducts: async (page = 1, category: Category = "All", search = "") => {
+    const isPageChange = page !== get().currentPage;
+    set({ 
+      isLoading: !isPageChange, 
+      isPaginationLoading: isPageChange, 
+      error: null, 
+      currentPage: page 
+    });
     try {
-      const response = await axiosInstance.get("/products");
+      const response = await axiosInstance.get<ApiResponse>("/products", {
+        params: {
+          page,
+          limit: get().pagination.limit,
+          category: category === "All" ? undefined : category,
+          search: search || undefined,
+        },
+      });
       const products = response.data.data.map(transformProduct);
-      set({ products, isLoading: false });
+      set({
+        products,
+        pagination: response.data.pagination,
+        isLoading: false,
+        isPaginationLoading: false,
+      });
     } catch {
-      set({ error: "Failed to fetch products", isLoading: false });
+      set({ error: "Failed to fetch products", isLoading: false, isPaginationLoading: false });
     }
   },
 
@@ -96,4 +146,8 @@ export const useProductStore = create<ProductState>((set) => ({
   },
 
   clearSelectedProduct: () => set({ selectedProduct: null }),
+
+  setPage: (page: number) => {
+    get().fetchProducts(page);
+  },
 }));

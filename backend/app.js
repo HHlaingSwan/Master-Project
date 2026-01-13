@@ -1,5 +1,5 @@
 import express from "express";
-import { PORT } from "./config/env.js";
+import { CLIENT_URL, PORT } from "./config/env.js";
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
 import productRouter from "./routes/product.route.js";
@@ -22,7 +22,7 @@ app.use(express.static("public")); // Serve static files
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: CLIENT_URL,
     credentials: true,
   })
 );

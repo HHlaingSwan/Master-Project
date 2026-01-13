@@ -3,6 +3,7 @@ import multer from "multer";
 import { uploadImage } from "../controllers/upload.controller.js";
 import authorize from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/auth.middleware.js";
+import arcjetMiddleware from "../middleware/arcjet.middleware.js";
 
 const uploadRouter = Router();
 
@@ -26,6 +27,7 @@ uploadRouter.post(
   "/upload",
   authorize,
   isAdmin,
+  arcjetMiddleware,
   upload.single("image"),
   uploadImage
 );

@@ -5,6 +5,7 @@ export const {
   PORT,
   MONGODB_URI,
   NODE_ENV,
+  CLIENT_URL,
   JWT_SECRET,
   JWT_EXPIRES_IN,
   ARCJET_KEY,

@@ -33,6 +33,8 @@ import {
   AlignLeft,
   Upload,
   Camera,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import axiosInstance from "@/api";
 import { toast } from "@/lib/toast";
@@ -162,6 +164,14 @@ const Dashboard: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [formData, setFormData] = useState({
     productId: "",
     name: "",
@@ -177,13 +187,20 @@ const Dashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(1, searchTerm);
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 1, search = "") => {
     try {
-      const response = await axiosInstance.get("/products");
+      const response = await axiosInstance.get("/products", {
+        params: {
+          page,
+          limit: 12,
+          search: search || undefined,
+        },
+      });
       setProducts(response.data.data);
+      setPagination(response.data.pagination);
     } catch {
       toast.error("Failed to fetch products");
     } finally {
@@ -191,11 +208,18 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    fetchProducts(1, value);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchProducts(newPage, searchTerm);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   const openCreateSheet = () => {
     setSelectedProduct(null);
@@ -327,7 +351,7 @@ const Dashboard: React.FC = () => {
       }
 
       setIsSheetOpen(false);
-      fetchProducts();
+      fetchProducts(1, searchTerm);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Failed to save product");
@@ -340,7 +364,7 @@ const Dashboard: React.FC = () => {
       await axiosInstance.delete(`/products/${selectedProduct.productId}`);
       toast.success("Product deleted successfully");
       setIsDeleteDialogOpen(false);
-      fetchProducts();
+      fetchProducts(pagination.page, searchTerm);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Failed to delete product");
@@ -393,14 +417,18 @@ const Dashboard: React.FC = () => {
             <Input
               placeholder="Search products..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearch}
               className="pl-9 sm:pl-10 h-10 sm:h-11 bg-white border-slate-200 shadow-sm"
             />
           </div>
         </div>
 
+        <div className="mb-4 text-sm text-slate-600">
+          Showing {products.length} of {pagination.total} products
+        </div>
+
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {filteredProducts.map((product) => (
+          {products.map((product) => (
             <Card
               key={product._id}
               className="overflow-hidden border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300"
@@ -499,7 +527,7 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
-        {filteredProducts.length === 0 && (
+        {products.length === 0 && (
           <div className="text-center py-16">
             <div className="w-24 h-24 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
               <Package className="w-10 h-10 text-slate-300" />
@@ -518,6 +546,34 @@ const Dashboard: React.FC = () => {
                 Add Product
               </Button>
             )}
+          </div>
+        )}
+
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={!pagination.hasPrevPage}
+              className="h-10 w-10"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+
+            <span className="text-sm text-slate-600 px-2">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={!pagination.hasNextPage}
+              className="h-10 w-10"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         )}
       </main>

@@ -12,10 +12,36 @@ const isValidCloudinaryUrl = (url) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const skip = (page - 1) * limit;
+    const category = req.query.category;
+    const search = req.query.search;
+
+    let query = {};
+
+    if (category && category !== "All") {
+      query.category = category;
+    }
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    const total = await Product.countDocuments(query);
+    const products = await Product.find(query).skip(skip).limit(limit);
+
     res.status(200).send({
       success: true,
       data: products,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     res.status(500).send({ message: "Error fetching products", error });
@@ -62,7 +88,9 @@ export const createProduct = async (req, res) => {
 
     const existingProduct = await Product.findOne({ productId });
     if (existingProduct) {
-      return res.status(409).send({ message: "Product with this ID already exists" });
+      return res
+        .status(409)
+        .send({ message: "Product with this ID already exists" });
     }
 
     const newProduct = new Product({
