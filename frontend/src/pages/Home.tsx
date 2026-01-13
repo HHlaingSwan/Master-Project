@@ -11,10 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ProductDetail from "./ProductDetail";
-import { toast } from "@/lib/toast";
 
 export type Category =
   | "All"
@@ -56,18 +54,6 @@ const Home: React.FC = () => {
 
   const handleCategoryChange = (category: Category) => {
     setSelectedCategory(category);
-  };
-
-  const handleAddToCart = (product: (typeof products)[0]) => {
-    addToCart({
-      id: product.id as unknown as number,
-      name: product.name,
-      price: product.price,
-      image: product.image || "",
-    });
-    setClickedProduct(product.id);
-    toast.success(`${product.name} added to cart!`);
-    setTimeout(() => setClickedProduct(null), 1500);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -227,7 +213,7 @@ const Home: React.FC = () => {
                           }`}
                           onClick={(e) => {
                             e.preventDefault();
-                            handleAddToCart(product);
+                            setSelectedProductId(product.id);
                           }}
                         >
                           {clickedProduct === product.id ? (
@@ -238,7 +224,7 @@ const Home: React.FC = () => {
                           ) : (
                             <>
                               <ShoppingCart className="w-4 h-4 mr-2" />
-                              Add to Cart
+                              Choose Variant
                             </>
                           )}
                         </Button>
@@ -348,6 +334,21 @@ const Home: React.FC = () => {
             <ProductDetail
               id={selectedProductId}
               onBack={() => setSelectedProductId(null)}
+              onAddToCart={(product, color, size, quantity, image) => {
+                addToCart({
+                  id: product.id as unknown as number,
+                  name: product.name,
+                  price: product.price,
+                  image: image || product.image || "",
+                  color,
+                  size,
+                  quantity,
+                  maxQuantity: product.stock,
+                });
+                setClickedProduct(product.id);
+                setTimeout(() => setClickedProduct(null), 1500);
+                setSelectedProductId(null);
+              }}
             />
           )}
         </DialogContent>

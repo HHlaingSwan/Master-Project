@@ -183,7 +183,18 @@ const Dashboard: React.FC = () => {
     badge: "",
     category: "",
     stock: "",
+    variants: [] as {
+      color: string;
+      colorCode: string;
+      size?: string;
+      images: string[];
+    }[],
+    sizes: [] as string[],
   });
+  const [, setOriginalImage] = useState("");
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [newColor, setNewColor] = useState({ name: "", colorCode: "#000000" });
+  const [newSize, setNewSize] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -234,7 +245,11 @@ const Dashboard: React.FC = () => {
       badge: "",
       category: "",
       stock: "",
+      variants: [],
+      sizes: [],
     });
+    setNewColor({ name: "", colorCode: "#000000" });
+    setNewSize("");
     setIsSheetOpen(true);
   };
 
@@ -251,7 +266,13 @@ const Dashboard: React.FC = () => {
       badge: product.badge || "",
       category: product.category,
       stock: product.stock ? String(product.stock) : "",
+      variants: product.variants || [],
+      sizes: product.sizes || [],
     });
+    setOriginalImage(product.image);
+    setImageRemoved(false);
+    setNewColor({ name: "", colorCode: "#000000" });
+    setNewSize("");
     setIsSheetOpen(true);
   };
 
@@ -314,6 +335,11 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      if (!selectedProduct && !formData.image) {
+        toast.error("Product image is required");
+        return;
+      }
+
       if (stockValue < 0) {
         toast.error("Stock cannot be negative");
         return;
@@ -326,18 +352,43 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         productId: formData.productId,
         name: formData.name,
         description: formData.description,
         price: price,
         originalPrice: originalPriceValue,
         rating: formData.rating,
-        image: formData.image,
         badge: formData.badge || undefined,
         category: formData.category,
         stock: stockValue,
+        variants: formData.variants.map((v) => ({
+          color: v.color,
+          colorCode: v.colorCode,
+          ...(v.images?.length > 0 && { images: v.images }),
+        })),
+        sizes: formData.sizes,
       };
+
+      if (selectedProduct) {
+        console.log(
+          "Updating product, image value:",
+          formData.image,
+          "removed:",
+          imageRemoved
+        );
+        if (imageRemoved) {
+          payload.image = "";
+          console.log("Image removed, sending empty string");
+        } else if (formData.image && formData.image.trim() !== "") {
+          payload.image = formData.image;
+          console.log("Adding new image to payload");
+        }
+      } else {
+        payload.image = formData.image;
+      }
+
+      console.log("Payload being sent:", JSON.stringify(payload, null, 2));
 
       if (selectedProduct) {
         await axiosInstance.put(
@@ -369,6 +420,50 @@ const Dashboard: React.FC = () => {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Failed to delete product");
     }
+  };
+
+  const addColor = () => {
+    if (newColor.name && newColor.colorCode) {
+      const exists = formData.variants.some(
+        (v) => v.color.toLowerCase() === newColor.name.toLowerCase()
+      );
+      if (exists) {
+        toast.error("Color already exists");
+        return;
+      }
+      setFormData({
+        ...formData,
+        variants: [
+          ...formData.variants,
+          { color: newColor.name, colorCode: newColor.colorCode, images: [] },
+        ],
+      });
+      setNewColor({ name: "", colorCode: "#000000" });
+    }
+  };
+
+  const removeColor = (colorName: string) => {
+    setFormData({
+      ...formData,
+      variants: formData.variants.filter((v) => v.color !== colorName),
+    });
+  };
+
+  const addSize = () => {
+    if (newSize && !formData.sizes.includes(newSize.toUpperCase())) {
+      setFormData({
+        ...formData,
+        sizes: [...formData.sizes, newSize.toUpperCase()],
+      });
+      setNewSize("");
+    }
+  };
+
+  const removeSize = (size: string) => {
+    setFormData({
+      ...formData,
+      sizes: formData.sizes.filter((s) => s !== size),
+    });
   };
 
   if (loading) {
@@ -579,7 +674,7 @@ const Dashboard: React.FC = () => {
       </main>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full h-full sm:h-auto sm:max-w-xl sm:w-full sm:rounded-l-xl md:max-w-2xl lg:max-w-xl bg-white shadow-xl flex flex-col sm:my-8">
+        <SheetContent className="w-full h-full sm:h-auto sm:max-w-xl sm:w-full s md:max-w-2xl lg:max-w-xl bg-white shadow-xl flex flex-col ">
           <SheetHeader className="shrink-0 pb-4 border-b border-slate-100">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-xl font-semibold text-slate-900">
@@ -629,6 +724,7 @@ const Dashboard: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setFormData({ ...formData, image: "" });
+                        setImageRemoved(true);
                       }}
                     >
                       <X className="w-3 h-3" />
@@ -761,6 +857,96 @@ const Dashboard: React.FC = () => {
                   }
                   required
                 />
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-slate-700">
+                  Colors
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Color name (e.g., Red)"
+                    value={newColor.name}
+                    onChange={(e) =>
+                      setNewColor({ ...newColor, name: e.target.value })
+                    }
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={newColor.colorCode}
+                      onChange={(e) =>
+                        setNewColor({ ...newColor, colorCode: e.target.value })
+                      }
+                      className="w-10 h-10 rounded border border-slate-200 cursor-pointer"
+                    />
+                    <Button type="button" onClick={addColor} size="sm">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.variants.map((variant) => (
+                    <div
+                      key={variant.color}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full"
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full border border-slate-300"
+                        style={{ backgroundColor: variant.colorCode }}
+                      />
+                      <span className="text-sm">{variant.color}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeColor(variant.color)}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-slate-700">
+                  Sizes
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Size (e.g., S, M, L, XL)"
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSize();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addSize} size="sm">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.sizes.map((size) => (
+                    <div
+                      key={size}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full"
+                    >
+                      <span className="text-sm">{size}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeSize(size)}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

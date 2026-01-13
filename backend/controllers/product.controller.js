@@ -2,11 +2,9 @@ import Product from "../model/product.model.js";
 import { CLOUDINARY_CLOUD_NAME } from "../config/env.js";
 
 const isValidCloudinaryUrl = (url) => {
-  if (!url) return true;
-  const cloudinaryRegex = new RegExp(
-    `https://res\\.cloudinary\\.com/${CLOUDINARY_CLOUD_NAME}/image/upload/`,
-    "i"
-  );
+  if (!url || url.trim() === "") return true;
+  const cloudinaryRegex =
+    /https:\/\/[a-z0-9]+\.cloudinary\.com\/image\/upload\//i;
   return cloudinaryRegex.test(url);
 };
 
@@ -51,6 +49,7 @@ export const getAllProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Fetching product:", id);
     const product = await Product.findOne({ productId: id });
     if (!product) {
       return res.status(404).send({ message: "Product not found" });
@@ -60,6 +59,7 @@ export const getProductById = async (req, res) => {
       data: product,
     });
   } catch (error) {
+    console.error("Error fetching product:", error);
     res.status(500).send({ message: "Error fetching product", error });
   }
 };
@@ -126,26 +126,29 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
     const { image, ...updateData } = req.body;
 
-    if (image && !isValidCloudinaryUrl(image)) {
-      return res.status(400).send({ message: "Invalid image URL" });
-    }
-
-    const updatedProduct = await Product.findOneAndUpdate(
-      { productId: id },
-      { ...updateData, ...(image && { image }) },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedProduct) {
+    const product = await Product.findOne({ productId: id });
+    if (!product) {
       return res.status(404).send({ message: "Product not found" });
     }
+
+    if (image !== undefined) {
+      if (image === "") {
+        product.image = "";
+      } else if (image.trim() !== "" && isValidCloudinaryUrl(image)) {
+        product.image = image;
+      }
+    }
+
+    Object.assign(product, updateData);
+    await product.save({ runValidators: false });
 
     res.status(200).send({
       success: true,
       message: "Product updated successfully",
-      data: updatedProduct,
+      data: product,
     });
   } catch (error) {
+    console.error("Update error:", error);
     res.status(500).send({ message: "Error updating product", error });
   }
 };

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart";
-import { useProductStore } from "@/store/product";
+import { useProductStore, type Product } from "@/store/product";
+import { toast } from "@/lib/toast";
+import { Heart, Star } from "lucide-react";
 import {
   ShoppingCart,
-  Star,
-  Heart,
   Minus,
   Plus,
   Truck,
@@ -14,29 +14,59 @@ import {
   Check,
 } from "lucide-react";
 
-const COLORS = [
-  { name: "Black", code: "#1a1a1a" },
-  { name: "White", code: "#f5f5f5" },
-  { name: "Navy", code: "#1e3a5f" },
-  { name: "Red", code: "#dc2626" },
-  { name: "Silver", code: "#9ca3af" },
-];
-
-const SIZES = ["S", "M", "L", "XL"];
-
 interface ProductDetailProps {
   id: string;
   onBack?: () => void;
+  onAddToCart?: (
+    product: Product,
+    color: string,
+    size: string,
+    quantity: number,
+    image: string
+  ) => void;
 }
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ id }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({
+  id,
+  onBack,
+  onAddToCart,
+}) => {
   const { addToCart } = useCartStore();
   const { selectedProduct, isLoading, fetchProductById, clearSelectedProduct } =
     useProductStore();
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [selectedSize, setSelectedSize] = useState(SIZES[1]);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  const availableColors =
+    selectedProduct?.variants?.map((v) => ({
+      name: v.color,
+      code: v.colorCode,
+    })) || [];
+  const availableSizes = selectedProduct?.sizes || [];
+
+  const [selectedColor, setSelectedColor] = useState<{
+    name: string;
+    code: string;
+  }>(() =>
+    availableColors.length > 0
+      ? availableColors[0]
+      : { name: "Default", code: "#000000" }
+  );
+  const [selectedSize, setSelectedSize] = useState<string>(() =>
+    availableSizes.length > 0 ? availableSizes[0] : ""
+  );
+
+  useEffect(() => {
+    if (availableColors.length > 0) {
+      setSelectedColor(availableColors[0]);
+    }
+  }, [selectedProduct?.variants]);
+
+  useEffect(() => {
+    if (availableSizes.length > 0) {
+      setSelectedSize(availableSizes[0]);
+    }
+  }, [selectedProduct?.sizes]);
 
   useEffect(() => {
     if (id) {
@@ -61,20 +91,44 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ id }) => {
   const currentImage = variantImages[activeImage] || selectedProduct.image;
 
   const handleAddToCart = () => {
-    addToCart({
-      id: selectedProduct.id as unknown as number,
-      name: selectedProduct.name,
-      price: selectedProduct.price,
-      image: currentImage,
-    });
+    if (!selectedProduct) return;
+
+    const stock = selectedProduct.stock || 0;
+    if (quantity > stock) {
+      toast.error(`Only ${stock} items available in stock`);
+      return;
+    }
+
+    if (onAddToCart) {
+      onAddToCart(
+        selectedProduct,
+        selectedColor.name,
+        selectedSize,
+        quantity,
+        currentImage
+      );
+    } else {
+      addToCart({
+        id: selectedProduct.id as unknown as number,
+        name: selectedProduct.name,
+        price: selectedProduct.price,
+        image: currentImage,
+      });
+    }
     setQuantity(1);
+    toast.success(
+      `${selectedProduct.name} (${selectedColor.name}, ${selectedSize}) added to cart!`
+    );
+    if (onBack) {
+      onBack();
+    }
   };
 
   return (
     <div className="bg-white rounded-xl overflow-hidden max-h-[85vh]">
       <div className="flex flex-col md:flex-row h-[85vh]">
         <div className="hidden md:flex w-1/2 h-full p-4 sm:p-6 bg-slate-50 items-center justify-center">
-          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-[500px]">
+          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-125">
             <img
               src={currentImage}
               alt={selectedProduct.name}
@@ -160,7 +214,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ id }) => {
                 </span>
               </h3>
               <div className="flex gap-2 sm:gap-3">
-                {COLORS.map((color) => (
+                {availableColors.map((color) => (
                   <button
                     key={color.name}
                     onClick={() => {
@@ -189,7 +243,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ id }) => {
               </div>
             </div>
 
-            {selectedProduct.sizes && (
+            {selectedProduct.sizes && availableSizes.length > 0 && (
               <div>
                 <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">
                   Size:{" "}
