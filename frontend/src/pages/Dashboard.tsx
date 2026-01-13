@@ -240,17 +240,34 @@ const Dashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       setIsUploading(true);
-      const uploadFormData = new FormData();
-      uploadFormData.append("image", file);
 
       try {
-        const response = await axiosInstance.post("/upload", uploadFormData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        setFormData((prev) => ({ ...prev, image: response.data.data.url }));
-        toast.success("Image uploaded successfully");
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "products_unsigned");
+        formData.append(
+          "cloud_name",
+          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || ""
+        );
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/" +
+            import.meta.env.VITE_CLOUDINARY_CLOUD_NAME +
+            "/image/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.secure_url) {
+          setFormData((prev) => ({ ...prev, image: data.secure_url }));
+          toast.success("Image uploaded successfully");
+        } else {
+          throw new Error(data.error?.message || "Upload failed");
+        }
       } catch {
         toast.error("Failed to upload image");
       } finally {
@@ -263,12 +280,18 @@ const Dashboard: React.FC = () => {
     e.preventDefault();
     try {
       const price = Number(formData.price);
+      const stockValue = Number(formData.stock);
       const originalPriceValue = formData.originalPrice
         ? Number(formData.originalPrice)
         : undefined;
 
       if (price <= 0) {
         toast.error("Price must be greater than 0");
+        return;
+      }
+
+      if (stockValue < 0) {
+        toast.error("Stock cannot be negative");
         return;
       }
 
@@ -289,11 +312,14 @@ const Dashboard: React.FC = () => {
         image: formData.image,
         badge: formData.badge || undefined,
         category: formData.category,
-        stock: formData.stock ? Number(formData.stock) : 0,
+        stock: stockValue,
       };
 
       if (selectedProduct) {
-        await axiosInstance.put(`/products/${selectedProduct.productId}`, payload);
+        await axiosInstance.put(
+          `/products/${selectedProduct.productId}`,
+          payload
+        );
         toast.success("Product updated successfully");
       } else {
         await axiosInstance.post("/products", payload);
@@ -588,10 +614,14 @@ const Dashboard: React.FC = () => {
                   label="Stock"
                   icon={Box}
                   type="number"
+                  min="0"
                   placeholder="0"
                   value={formData.stock}
                   onChange={(e) =>
-                    setFormData({ ...formData, stock: e.target.value })
+                    setFormData({
+                      ...formData,
+                      stock: Math.max(0, Number(e.target.value)).toString(),
+                    })
                   }
                 />
                 <FormSelect

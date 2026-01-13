@@ -6,8 +6,9 @@ export const uploadImage = async (req, res) => {
       return res.status(400).send({ message: "No file uploaded" });
     }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
+    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`, {
       folder: "products",
+      resource_type: "image",
       transformation: [
         { width: 800, height: 800, crop: "limit" },
         { quality: "auto", fetch_format: "auto" },

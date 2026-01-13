@@ -32,10 +32,6 @@ export const register = async (req, res) => {
     res.status(201).send({
       success: true,
       message: "User created successfully",
-      data: {
-        user: userWithoutPassword,
-        token,
-      },
     });
   } catch (error) {
     res.status(500).send({ message: "Error in register", error });

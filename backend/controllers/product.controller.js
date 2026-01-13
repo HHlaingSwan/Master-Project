@@ -1,4 +1,14 @@
 import Product from "../model/product.model.js";
+import { CLOUDINARY_CLOUD_NAME } from "../config/env.js";
+
+const isValidCloudinaryUrl = (url) => {
+  if (!url) return true;
+  const cloudinaryRegex = new RegExp(
+    `https://res\\.cloudinary\\.com/${CLOUDINARY_CLOUD_NAME}/image/upload/`,
+    "i"
+  );
+  return cloudinaryRegex.test(url);
+};
 
 export const getAllProducts = async (req, res) => {
   try {
@@ -46,6 +56,10 @@ export const createProduct = async (req, res) => {
       sizes,
     } = req.body;
 
+    if (!isValidCloudinaryUrl(image)) {
+      return res.status(400).send({ message: "Invalid image URL" });
+    }
+
     const existingProduct = await Product.findOne({ productId });
     if (existingProduct) {
       return res.status(409).send({ message: "Product with this ID already exists" });
@@ -82,10 +96,15 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    const { image, ...updateData } = req.body;
+
+    if (image && !isValidCloudinaryUrl(image)) {
+      return res.status(400).send({ message: "Invalid image URL" });
+    }
 
     const updatedProduct = await Product.findOneAndUpdate(
       { productId: id },
-      req.body,
+      { ...updateData, ...(image && { image }) },
       { new: true, runValidators: true }
     );
 

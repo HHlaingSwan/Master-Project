@@ -19,7 +19,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // Parse URL-encoded bodies
 app.use(express.static("public")); // Serve static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploads
 app.use(cookieParser());
 app.use(
   cors({
