@@ -28,3 +28,25 @@ export const getUserById = async (req, res) => {
     res.status(500).send({ message: "Error in getUserById", error });
   }
 };
+
+export const updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isAdmin } = req.body;
+    const user = await User.findByIdAndUpdate(
+      id,
+      { isAdmin },
+      { new: true }
+    ).select("-password");
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+    res.status(200).send({
+      success: true,
+      message: "User role updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Error in updateUserRole", error });
+  }
+};

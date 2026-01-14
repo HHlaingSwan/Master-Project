@@ -1,40 +1,48 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: [true, "Name is required"],
-        trim: true,
-        minLength: 3,
-        maxLength: 30
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+      minLength: 3,
+      maxLength: 30,
     },
     email: {
-        type: String,
-        required: [true, "Email is required"],
-        unique: true,
-        trim: true,
-        match: [/.+@.+\..+/, "Please enter a valid email address"]
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      trim: true,
+      match: [/.+@.+\..+/, "Please enter a valid email address"],
     },
     password: {
-        type: String,
-        required: [true, "Password is required"],
-        minLength: 8
+      type: String,
+      required: [true, "Password is required"],
+      minLength: 8,
     },
     isAdmin: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
     lastPasswordChange: {
-        type: Date,
-        default: null
+      type: Date,
+      default: null,
     },
     lastProfileUpdate: {
-        type: Date,
-        default: null
-    }
-}, {
-    timestamps: true
-});
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for better query performance
+userSchema.index({ isAdmin: 1 });
+userSchema.index({ lastPasswordChange: 1 });
+userSchema.index({ createdAt: -1 });
 
 const User = mongoose.model("User", userSchema);
 

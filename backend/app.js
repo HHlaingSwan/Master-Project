@@ -4,6 +4,7 @@ import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
 import productRouter from "./routes/product.route.js";
 import uploadRouter from "./routes/upload.route.js";
+import analyticsRouter from "./routes/analytics.route.js";
 import connectDB from "./database/db.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -32,6 +33,7 @@ app.use("/api", authRouter);
 app.use("/api", productRouter);
 app.use("/api", uploadRouter);
 app.use("/api/users", userRouter);
+app.use("/api/analytics", analyticsRouter);
 
 app.listen(PORT, async () => {
   try {

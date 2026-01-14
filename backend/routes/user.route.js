@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserById, getUsers } from "../controllers/user.controller.js";
+import { getUserById, getUsers, updateUserRole } from "../controllers/user.controller.js";
 import authorize from "../middleware/auth.middleware.js";
 import arcjetMiddleware from "../middleware/arcjet.middleware.js";
 
@@ -12,6 +12,8 @@ userRouter.get("/", getUsers);
 
 userRouter.get("/:id", getUserById);
 
+userRouter.put("/:id/role", updateUserRole);
+
 userRouter.post("/", (req, res) => {
   res.send({ title: "User created successfully" });
 });
@@ -21,7 +23,6 @@ userRouter.put("/:id", (req, res) => {
 });
 
 userRouter.delete("/:id", (req, res) => {
-  // Handle deleting user
   res.send({ title: "User deleted successfully" });
 });
 
