@@ -5,6 +5,8 @@ import {
   register,
   updateNameAndEmail,
   changePassword,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/auth.controller.js";
 import authorize from "../middleware/auth.middleware.js";
 
@@ -19,5 +21,9 @@ authRouter.post("/log-out", logout);
 authRouter.put("/update", authorize, updateNameAndEmail);
 
 authRouter.put("/change-password", authorize, changePassword);
+
+authRouter.post("/forgot-password", forgotPassword);
+
+authRouter.post("/reset-password", resetPassword);
 
 export default authRouter;

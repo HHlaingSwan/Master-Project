@@ -12,22 +12,6 @@ export const getUsers = async (req, res) => {
     res.status(500).send({ message: "Error in getUsers", error });
   }
 };
-export const getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findById(id).select("-password"); // Exclude password field
-    if (!user) {
-      return res.status(404).send({ message: "User not found" });
-    }
-    res.status(200).send({
-      success: true,
-      message: "User retrieved successfully",
-      data: user,
-    });
-  } catch (error) {
-    res.status(500).send({ message: "Error in getUserById", error });
-  }
-};
 
 export const updateUserRole = async (req, res) => {
   try {

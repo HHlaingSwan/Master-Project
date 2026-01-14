@@ -1,8 +1,10 @@
 import User from "../model/user.model.js";
 import bcrypt from "bcryptjs";
-import { JWT_EXPIRES_IN, JWT_SECRET } from "../config/env.js";
+import { JWT_EXPIRES_IN, JWT_SECRET, CLIENT_URL } from "../config/env.js";
 import jwt from "jsonwebtoken";
 import { isAdmin } from "../middleware/auth.middleware.js";
+import crypto from "crypto";
+import { sendPasswordResetEmail } from "../util/mailer.js";
 
 export const register = async (req, res) => {
   try {
@@ -158,5 +160,86 @@ export const changePassword = async (req, res) => {
     });
   } catch (error) {
     res.status(500).send({ message: "Error in changing password", error });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).send({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(200).send({
+        success: true,
+        message: "If an account exists with this email, a password reset link will be sent.",
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 3600000;
+    await user.save();
+
+    const resetLink = `${CLIENT_URL}/reset-password/${resetToken}?email=${encodeURIComponent(email)}`;
+
+    const emailResult = await sendPasswordResetEmail(email, resetLink);
+
+    if (!emailResult.success) {
+      console.error("Email send error:", emailResult.error);
+      return res.status(500).send({
+        message: "Error sending password reset email. Please try again.",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "If an account exists with this email, a password reset link will be sent.",
+    });
+  } catch (error) {
+    console.error("Error in forgotPassword:", error);
+    res.status(500).send({ message: "Error processing forgot password request", error });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body;
+
+    if (!token || !email || !newPassword) {
+      return res.status(400).send({ message: "Token, email, and new password are required" });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).send({ message: "Invalid or expired reset token" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    user.lastPasswordChange = new Date();
+    await user.save();
+
+    res.status(200).send({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    console.error("Error in resetPassword:", error);
+    res.status(500).send({ message: "Error resetting password", error });
   }
 };

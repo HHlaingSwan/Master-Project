@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserById, getUsers, updateUserRole } from "../controllers/user.controller.js";
+import { getUsers, updateUserRole } from "../controllers/user.controller.js";
 import authorize from "../middleware/auth.middleware.js";
 import arcjetMiddleware from "../middleware/arcjet.middleware.js";
 
@@ -9,8 +9,6 @@ userRouter.use(arcjetMiddleware);
 userRouter.use(authorize);
 
 userRouter.get("/", getUsers);
-
-userRouter.get("/:id", getUserById);
 
 userRouter.put("/:id/role", updateUserRole);
 
