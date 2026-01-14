@@ -202,7 +202,7 @@ const FilterSheet: React.FC<FilterSheetProps> = ({
           </div>
         </div>
 
-        <div className="flex-shrink-0 pt-4 border-t space-y-3">
+        <div className="shrink-0 pt-4 border-t space-y-3">
           <Button className="w-full h-11" onClick={handleApply}>
             Apply Filters
           </Button>

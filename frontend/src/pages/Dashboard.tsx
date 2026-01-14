@@ -26,8 +26,6 @@ interface Product {
   variants?: {
     color: string;
     colorCode: string;
-    size?: string;
-    images: string[];
   }[];
   sizes?: string[];
 }
@@ -71,8 +69,6 @@ interface ProductFormData {
   variants: {
     color: string;
     colorCode: string;
-    size?: string;
-    images: string[];
   }[];
   sizes: string[];
 }
@@ -401,7 +397,6 @@ const Dashboard: React.FC = () => {
       variants: formData.variants.map((v) => ({
         color: v.color,
         colorCode: v.colorCode,
-        ...(v.images?.length > 0 && { images: v.images }),
       })),
       sizes: formData.sizes,
     };
@@ -446,7 +441,7 @@ const Dashboard: React.FC = () => {
         ...formData,
         variants: [
           ...formData.variants,
-          { color: newColor.name, colorCode: newColor.colorCode, images: [] },
+          { color: newColor.name, colorCode: newColor.colorCode },
         ],
       });
       setNewColor({ name: "", colorCode: "#000000" });

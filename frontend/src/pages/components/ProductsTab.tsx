@@ -2,7 +2,15 @@ import React, { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 
 interface Product {
   _id: string;
@@ -16,140 +24,13 @@ interface Product {
   badge?: string;
   category: string;
   stock?: number;
+  variants?: Array<{
+    color: string;
+    colorCode: string;
+    size?: string;
+  }>;
+  sizes?: string[];
 }
-
-interface ProductCardProps {
-  product: Product;
-  onEdit: (product: Product) => void;
-  onDelete: (product: Product) => void;
-}
-
-const ProductCard: React.FC<ProductCardProps> = memo(function ProductCard({
-  product,
-  onEdit,
-  onDelete,
-}) {
-  return (
-    <Card className="overflow-hidden border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300">
-      <div className="aspect-video relative overflow-hidden bg-slate-100">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-        {product.badge && (
-          <span
-            className={`absolute top-3 left-3 px-2.5 py-1 text-xs font-semibold rounded-full ${
-              product.badge === "Sale"
-                ? "bg-red-500 text-white"
-                : product.badge === "New"
-                ? "bg-green-500 text-white"
-                : "bg-primary text-white"
-            }`}
-          >
-            {product.badge}
-          </span>
-        )}
-        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3">
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <svg
-                key={star}
-                className={`w-4 h-4 ${
-                  star <= Math.round(product.rating)
-                    ? "fill-amber-400 text-amber-400"
-                    : "fill-slate-300 text-slate-300"
-                }`}
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            ))}
-            <span className="text-white text-sm ml-1">({product.rating})</span>
-          </div>
-        </div>
-      </div>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                {product.productId}
-              </span>
-            </div>
-            <h3 className="font-semibold text-slate-900 line-clamp-1 text-lg">
-              {product.name}
-            </h3>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 mt-1">
-              {product.category}
-            </span>
-          </div>
-          <div className="text-right ml-4">
-            <span className="text-xl font-bold text-slate-900 block">
-              ${product.price.toFixed(2)}
-            </span>
-            {product.originalPrice && (
-              <span className="text-sm text-slate-400 line-through">
-                ${product.originalPrice.toFixed(2)}
-              </span>
-            )}
-          </div>
-        </div>
-        <p className="text-sm text-slate-500 line-clamp-2 mb-4">
-          {product.description}
-        </p>
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <span className="text-sm text-slate-500">
-            {product.stock || 0} in stock
-          </span>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(product)}
-              className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-primary/10"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(product)}
-              className="h-8 w-8 text-slate-500 hover:text-red-500 hover:bg-red-50"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-});
 
 interface ProductsTabProps {
   products: Product[];
@@ -170,6 +51,211 @@ interface ProductsTabProps {
   onDelete: (product: Product) => void;
 }
 
+const StatCard: React.FC<{
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+}> = ({ title, value, icon, color }) => (
+  <Card className="border-slate-200 shadow-sm">
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-slate-500 mb-1">{title}</p>
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+        </div>
+        <div className={`p-3 rounded-full ${color}`}>{icon}</div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ProductsTable: React.FC<{
+  products: Product[];
+  onEdit: (product: Product) => void;
+  onDelete: (product: Product) => void;
+  loading: boolean;
+}> = memo(function ProductsTable({ products, onEdit, onDelete }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Product
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Colors
+              </th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Price
+              </th>
+              <th className="text-center py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Stock
+              </th>
+              <th className="text-center py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {products.map((product) => (
+              <tr
+                key={product._id}
+                className="hover:bg-slate-50 transition-colors"
+              >
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 truncate max-w-48">
+                        {product.name}
+                      </p>
+                      <p className="text-sm text-slate-500 truncate max-w-48">
+                        {product.description}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    {product.productId}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                    {product.category}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex gap-1 flex-wrap">
+                    {product.variants?.slice(0, 4).map((variant, idx) => (
+                      <div
+                        key={idx}
+                        className="w-5 h-5 rounded-full border border-slate-200"
+                        style={{ backgroundColor: variant.colorCode }}
+                        title={variant.color}
+                      />
+                    ))}
+                    {(product.variants?.length || 0) > 4 && (
+                      <span className="text-xs text-slate-500 ml-1">
+                        +{(product.variants?.length || 0) - 4}
+                      </span>
+                    )}
+                    {(product.variants?.length || 0) === 0 && (
+                      <span className="text-sm text-slate-400">-</span>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      ${product.price.toFixed(2)}
+                    </span>
+                    {product.originalPrice && (
+                      <span className="block text-xs text-slate-400 line-through">
+                        ${product.originalPrice.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span
+                    className={`font-medium ${
+                      (product.stock || 0) > 10
+                        ? "text-green-600"
+                        : (product.stock || 0) > 0
+                        ? "text-amber-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {product.stock || 0}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  {(product.stock || 0) > 10 ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      In Stock
+                    </span>
+                  ) : (product.stock || 0) > 0 ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                      Low Stock
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      Out of Stock
+                    </span>
+                  )}
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(product)}
+                      className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-primary/10"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(product)}
+                      className="h-8 w-8 text-slate-500 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+});
+
 const ProductsTab: React.FC<ProductsTabProps> = ({
   products,
   searchTerm,
@@ -182,8 +268,43 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const totalProducts = pagination.total;
+  const inStock = products.filter((p) => (p.stock || 0) > 0).length;
+  const outOfStock = products.filter((p) => (p.stock || 0) === 0).length;
+  const totalValue = products.reduce(
+    (sum, p) => sum + p.price * (p.stock || 0),
+    0
+  );
+
   return (
     <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          title="Total Products"
+          value={totalProducts}
+          icon={<Package className="w-5 h-5 text-white" />}
+          color="bg-primary"
+        />
+        <StatCard
+          title="In Stock"
+          value={inStock}
+          icon={<TrendingUp className="w-5 h-5 text-white" />}
+          color="bg-green-500"
+        />
+        <StatCard
+          title="Out of Stock"
+          value={outOfStock}
+          icon={<AlertCircle className="w-5 h-5 text-white" />}
+          color="bg-red-500"
+        />
+        <StatCard
+          title="Total Value"
+          value={`$${totalValue.toLocaleString()}`}
+          icon={<Package className="w-5 h-5 text-white" />}
+          color="bg-amber-500"
+        />
+      </div>
+
       <div className="mb-4 sm:mb-6">
         <div className="relative max-w-sm sm:max-w-md flex gap-2">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
@@ -195,7 +316,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
           />
           <Button onClick={onCreate} className="h-10 sm:h-11">
             <Plus className="w-4 h-4 mr-2" />
-            Add
+            Add Product
           </Button>
         </div>
       </div>
@@ -213,20 +334,16 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {products.map((product) => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <ProductsTable
+          products={products}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          loading={loading}
+        />
 
         {pagination.totalPages > 1 && (
           <div
-            className={`flex items-center justify-center gap-2 mt-8 ${
+            className={`flex items-center justify-center gap-2 mt-6 ${
               paginationLoading ? "opacity-50" : ""
             }`}
           >

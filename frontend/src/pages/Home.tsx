@@ -362,7 +362,7 @@ const Home: React.FC = () => {
               })}
             </div>
 
-            {pagination.totalPages > 1 && (
+            {pagination.totalPages > 1 && totalFiltersCount === 0 && (
               <div className="flex items-center justify-center gap-1 sm:gap-2 mt-8 sm:mt-12">
                 <Button
                   variant="outline"

@@ -8,8 +8,6 @@ import { Plus, X, Hash, Tag, Box, DollarSign, AlignLeft, Upload, Camera } from "
 interface ProductVariant {
   color: string;
   colorCode: string;
-  size?: string;
-  images: string[];
 }
 
 interface ProductFormData {
