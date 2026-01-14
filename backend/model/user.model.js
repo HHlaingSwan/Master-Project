@@ -23,6 +23,14 @@ const userSchema = new mongoose.Schema({
     isAdmin: {
         type: Boolean,
         default: false
+    },
+    lastPasswordChange: {
+        type: Date,
+        default: null
+    },
+    lastProfileUpdate: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

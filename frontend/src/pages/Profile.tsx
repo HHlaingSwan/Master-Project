@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,30 +15,86 @@ import { useAuthStore } from "@/store/auth";
 import { toast } from "@/lib/toast";
 
 const Profile: React.FC = () => {
-  const { authUser } = useAuthStore();
+  const { authUser, updateNameAndEmail, changePassword } = useAuthStore();
   const [formData, setFormData] = useState({
     name: authUser?.name || "",
     email: authUser?.email || "",
+  });
+  const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  const canChangePassword = useMemo(() => {
+    if (!authUser?.lastPasswordChange) return true;
+    const timeSinceLastChange = Date.now() - new Date(authUser.lastPasswordChange).getTime();
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    return timeSinceLastChange >= fortyEightHours;
+  }, [authUser?.lastPasswordChange]);
+
+  const passwordHoursRemaining = useMemo(() => {
+    if (!authUser?.lastPasswordChange) return 0;
+    const timeSinceLastChange = Date.now() - new Date(authUser.lastPasswordChange).getTime();
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    const remaining = fortyEightHours - timeSinceLastChange;
+    return remaining > 0 ? Math.ceil(remaining / (1000 * 60 * 60)) : 0;
+  }, [authUser?.lastPasswordChange]);
+
+  const canUpdateProfile = useMemo(() => {
+    if (!authUser?.lastProfileUpdate) return true;
+    const timeSinceLastUpdate = Date.now() - new Date(authUser.lastProfileUpdate).getTime();
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    return timeSinceLastUpdate >= fortyEightHours;
+  }, [authUser?.lastProfileUpdate]);
+
+  const profileHoursRemaining = useMemo(() => {
+    if (!authUser?.lastProfileUpdate) return 0;
+    const timeSinceLastUpdate = Date.now() - new Date(authUser.lastProfileUpdate).getTime();
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    const remaining = fortyEightHours - timeSinceLastUpdate;
+    return remaining > 0 ? Math.ceil(remaining / (1000 * 60 * 60)) : 0;
+  }, [authUser?.lastProfileUpdate]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleNameAndEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await updateNameAndEmail(formData);
       toast.success("Profile updated successfully");
     } catch {
       toast.error("Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await changePassword(passwordData);
+      toast.success("Password updated successfully");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch {
+      toast.error("Failed to update password");
     } finally {
       setIsLoading(false);
     }
@@ -80,47 +136,55 @@ const Profile: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        placeholder="John Doe"
-                        className="pl-10"
-                      />
+              {!canUpdateProfile ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-amber-800">
+                    You can update your profile again in {profileHoursRemaining} hours.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleNameAndEmail} className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          placeholder="John Doe"
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          placeholder="name@example.com"
+                          className="pl-10"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="name@example.com"
-                        className="pl-10"
-                      />
-                    </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isLoading}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {isLoading ? "Saving..." : "Save Changes"}
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isLoading}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {isLoading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
-              </form>
+                </form>
+              )}
             </CardContent>
           </Card>
 
@@ -135,54 +199,62 @@ const Profile: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input
-                      id="currentPassword"
-                      name="currentPassword"
-                      type="password"
-                      value={formData.currentPassword}
-                      onChange={handleInputChange}
-                      placeholder="Enter current password"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      name="newPassword"
-                      type="password"
-                      value={formData.newPassword}
-                      onChange={handleInputChange}
-                      placeholder="Enter new password"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">
-                      Confirm New Password
-                    </Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Confirm new password"
-                    />
-                  </div>
+              {!canChangePassword ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-amber-800">
+                    You can change your password again in {passwordHoursRemaining} hours.
+                  </p>
                 </div>
+              ) : (
+                <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Enter current password"
+                      />
+                    </div>
 
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isLoading}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {isLoading ? "Updating..." : "Update Password"}
-                  </Button>
-                </div>
-              </form>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Enter new password"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">
+                        Confirm New Password
+                      </Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Confirm new password"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isLoading}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {isLoading ? "Updating..." : "Update Password"}
+                    </Button>
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
