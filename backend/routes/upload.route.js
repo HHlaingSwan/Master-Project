@@ -27,8 +27,8 @@ uploadRouter.post(
   "/upload",
   authorize,
   isAdmin,
-  arcjetMiddleware,
   upload.single("image"),
+  arcjetMiddleware,
   uploadImage
 );
 

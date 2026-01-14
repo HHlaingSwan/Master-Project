@@ -33,6 +33,13 @@ export const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { isAdmin } = req.body;
+
+    if (req.user._id.toString() === id && isAdmin === false) {
+      return res.status(403).send({
+        message: "You cannot remove your own admin privileges",
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
       { isAdmin },

@@ -1,12 +1,4 @@
 import Product from "../model/product.model.js";
-import { CLOUDINARY_CLOUD_NAME } from "../config/env.js";
-
-const isValidCloudinaryUrl = (url) => {
-  if (!url || url.trim() === "") return true;
-  const cloudinaryRegex =
-    /https:\/\/[a-z0-9]+\.cloudinary\.com\/image\/upload\//i;
-  return cloudinaryRegex.test(url);
-};
 
 export const getAllProducts = async (req, res) => {
   try {
@@ -82,8 +74,8 @@ export const createProduct = async (req, res) => {
       sizes,
     } = req.body;
 
-    if (!isValidCloudinaryUrl(image)) {
-      return res.status(400).send({ message: "Invalid image URL" });
+    if (!image || typeof image !== "string" || image.trim() === "") {
+      return res.status(400).send({ message: "Valid image URL is required" });
     }
 
     const existingProduct = await Product.findOne({ productId });
@@ -124,7 +116,7 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { image, ...updateData } = req.body;
+    const { image, variants, sizes, ...rest } = req.body;
 
     const product = await Product.findOne({ productId: id });
     if (!product) {
@@ -134,12 +126,25 @@ export const updateProduct = async (req, res) => {
     if (image !== undefined) {
       if (image === "") {
         product.image = "";
-      } else if (image.trim() !== "" && isValidCloudinaryUrl(image)) {
+      } else if (typeof image === "string" && image.trim().length > 0) {
         product.image = image;
       }
     }
 
-    Object.assign(product, updateData);
+    if (variants !== undefined) {
+      product.variants = variants;
+    }
+
+    if (sizes !== undefined) {
+      product.sizes = sizes;
+    }
+
+    Object.keys(rest).forEach((key) => {
+      if (rest[key] !== undefined) {
+        product[key] = rest[key];
+      }
+    });
+
     await product.save({ runValidators: false });
 
     res.status(200).send({

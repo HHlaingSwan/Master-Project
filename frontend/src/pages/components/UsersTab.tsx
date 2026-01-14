@@ -17,7 +17,11 @@ interface UsersTabProps {
   onToggleRole: (userId: string, currentRole: boolean) => void;
 }
 
-const UsersTab: React.FC<UsersTabProps> = ({ users, loading, onToggleRole }) => {
+const UsersTab: React.FC<UsersTabProps> = ({
+  users,
+  loading,
+  onToggleRole,
+}) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">

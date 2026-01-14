@@ -23,7 +23,12 @@ interface Product {
   category: string;
   stock?: number;
   features?: string[];
-  variants?: { color: string; colorCode: string; size?: string; images: string[] }[];
+  variants?: {
+    color: string;
+    colorCode: string;
+    size?: string;
+    images: string[];
+  }[];
   sizes?: string[];
 }
 
@@ -63,18 +68,26 @@ interface ProductFormData {
   badge: string;
   category: string;
   stock: string;
-  variants: { color: string; colorCode: string; size?: string; images: string[] }[];
+  variants: {
+    color: string;
+    colorCode: string;
+    size?: string;
+    images: string[];
+  }[];
   sizes: string[];
 }
 
 const Dashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"products" | "users" | "analytics">("products");
+  const [activeTab, setActiveTab] = useState<
+    "products" | "users" | "analytics"
+  >("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [paginationLoading, setPaginationLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -107,6 +120,7 @@ const Dashboard: React.FC = () => {
   const [newColor, setNewColor] = useState({ name: "", colorCode: "#000000" });
   const [newSize, setNewSize] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (activeTab === "products") {
@@ -118,7 +132,12 @@ const Dashboard: React.FC = () => {
     }
   }, [activeTab]);
 
-  const fetchProducts = async (page = 1, search = "") => {
+  const fetchProducts = async (page = 1, search = "", isPagination = false) => {
+    if (isPagination) {
+      setPaginationLoading(true);
+    } else {
+      setProductsLoading(true);
+    }
     try {
       const response = await axiosInstance.get("/products", {
         params: {
@@ -132,7 +151,11 @@ const Dashboard: React.FC = () => {
     } catch {
       toast.error("Failed to fetch products");
     } finally {
-      setLoading(false);
+      if (isPagination) {
+        setPaginationLoading(false);
+      } else {
+        setProductsLoading(false);
+      }
     }
   };
 
@@ -160,25 +183,39 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleToggleAdminRole = async (userId: string, currentRole: boolean) => {
+  const handleToggleAdminRole = async (
+    userId: string,
+    currentRole: boolean
+  ) => {
     try {
-      await axiosInstance.put(`/users/${userId}/role`, { isAdmin: !currentRole });
-      toast.success(`User ${!currentRole ? "promoted to" : "demoted from"} admin`);
+      await axiosInstance.put(`/users/${userId}/role`, {
+        isAdmin: !currentRole,
+      });
+      toast.success(
+        `User ${!currentRole ? "promoted to" : "demoted from"} admin`
+      );
       fetchUsers();
-    } catch {
-      toast.error("Failed to update user role");
+    } catch (error: any) {
+      toast.error(error.response.data.message || "Failed to update user role");
     }
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    fetchProducts(1, value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchProducts(1, value);
+    }, 300);
   };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchProducts(newPage, searchTerm);
+      fetchProducts(newPage, searchTerm, true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -239,32 +276,18 @@ const Dashboard: React.FC = () => {
 
       try {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", "products_unsigned");
-        formData.append(
-          "cloud_name",
-          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || ""
-        );
+        formData.append("image", file);
 
-        const response = await fetch(
-          "https://api.cloudinary.com/v1_1/" +
-            import.meta.env.VITE_CLOUDINARY_CLOUD_NAME +
-            "/image/upload",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+        const response = await axiosInstance.post("/upload", formData);
 
-        const data = await response.json();
-
-        if (data.secure_url) {
-          setFormData((prev) => ({ ...prev, image: data.secure_url }));
+        if (response.data.data?.url) {
+          setFormData((prev) => ({ ...prev, image: response.data.data.url }));
           toast.success("Image uploaded successfully");
         } else {
-          throw new Error(data.error?.message || "Upload failed");
+          throw new Error("Upload failed");
         }
-      } catch {
+      } catch (error) {
+        console.error("Upload error:", error);
         toast.error("Failed to upload image");
       } finally {
         setIsUploading(false);
@@ -274,62 +297,23 @@ const Dashboard: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const price = Number(formData.price);
+    const stockValue = Number(formData.stock);
+    const originalPriceValue = formData.originalPrice
+      ? Number(formData.originalPrice)
+      : undefined;
+
     try {
-      const price = Number(formData.price);
-      const stockValue = Number(formData.stock);
-      const originalPriceValue = formData.originalPrice
-        ? Number(formData.originalPrice)
-        : undefined;
+      validateForm({
+        price,
+        stockValue,
+        originalPriceValue,
+        formData,
+        selectedProduct,
+      });
 
-      if (price <= 0) {
-        toast.error("Price must be greater than 0");
-        return;
-      }
-
-      if (!selectedProduct && !formData.image) {
-        toast.error("Product image is required");
-        return;
-      }
-
-      if (stockValue < 0) {
-        toast.error("Stock cannot be negative");
-        return;
-      }
-
-      if (originalPriceValue && originalPriceValue <= price) {
-        toast.error(
-          "Original price must be greater than current price for discounts"
-        );
-        return;
-      }
-
-      const payload: Record<string, unknown> = {
-        productId: formData.productId,
-        name: formData.name,
-        description: formData.description,
-        price: price,
-        originalPrice: originalPriceValue,
-        rating: formData.rating,
-        badge: formData.badge || undefined,
-        category: formData.category,
-        stock: stockValue,
-        variants: formData.variants.map((v) => ({
-          color: v.color,
-          colorCode: v.colorCode,
-          ...(v.images?.length > 0 && { images: v.images }),
-        })),
-        sizes: formData.sizes,
-      };
-
-      if (selectedProduct) {
-        if (imageRemoved) {
-          payload.image = "";
-        } else if (formData.image && formData.image.trim() !== "") {
-          payload.image = formData.image;
-        }
-      } else {
-        payload.image = formData.image;
-      }
+      const payload = buildPayload({ formData, selectedProduct, imageRemoved });
 
       if (selectedProduct) {
         await axiosInstance.put(
@@ -344,10 +328,95 @@ const Dashboard: React.FC = () => {
 
       setIsSheetOpen(false);
       fetchProducts(1, searchTerm);
-    } catch (error: unknown) {
+    } catch (error) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || "Failed to save product");
+      if (err.response?.data?.message) {
+        throw err;
+      }
+      toast.error("Failed to save product");
     }
+  };
+
+  const validateForm = ({
+    price,
+    stockValue,
+    originalPriceValue,
+    formData,
+    selectedProduct,
+  }: {
+    price: number;
+    stockValue: number;
+    originalPriceValue?: number;
+    formData: ProductFormData;
+    selectedProduct: Product | null;
+  }) => {
+    if (price <= 0) {
+      toast.error("Price must be greater than 0");
+      throw new Error("Validation failed");
+    }
+
+    if (!selectedProduct && !formData.image) {
+      toast.error("Product image is required");
+      throw new Error("Validation failed");
+    }
+
+    if (stockValue < 0) {
+      toast.error("Stock cannot be negative");
+      throw new Error("Validation failed");
+    }
+
+    if (originalPriceValue && originalPriceValue <= price) {
+      toast.error(
+        "Original price must be greater than current price for discounts"
+      );
+      throw new Error("Validation failed");
+    }
+  };
+
+  const buildPayload = ({
+    formData,
+    selectedProduct,
+    imageRemoved,
+  }: {
+    formData: ProductFormData;
+    selectedProduct: Product | null;
+    imageRemoved: boolean;
+  }) => {
+    const price = Number(formData.price);
+    const stockValue = Number(formData.stock);
+    const originalPriceValue = formData.originalPrice
+      ? Number(formData.originalPrice)
+      : undefined;
+
+    const payload: Record<string, unknown> = {
+      productId: formData.productId,
+      name: formData.name,
+      description: formData.description,
+      price,
+      originalPrice: originalPriceValue,
+      rating: formData.rating,
+      badge: formData.badge || undefined,
+      category: formData.category,
+      stock: stockValue,
+      variants: formData.variants.map((v) => ({
+        color: v.color,
+        colorCode: v.colorCode,
+        ...(v.images?.length > 0 && { images: v.images }),
+      })),
+      sizes: formData.sizes,
+    };
+
+    if (selectedProduct) {
+      if (imageRemoved) {
+        payload.image = "";
+      } else if (formData.image) {
+        payload.image = formData.image;
+      }
+    } else {
+      payload.image = formData.image;
+    }
+
+    return payload;
   };
 
   const handleDelete = async () => {
@@ -360,6 +429,7 @@ const Dashboard: React.FC = () => {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Failed to delete product");
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -406,14 +476,6 @@ const Dashboard: React.FC = () => {
       sizes: formData.sizes.filter((s) => s !== size),
     });
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -483,6 +545,8 @@ const Dashboard: React.FC = () => {
             products={products}
             searchTerm={searchTerm}
             pagination={pagination}
+            paginationLoading={paginationLoading}
+            loading={productsLoading}
             onSearch={handleSearch}
             onPageChange={handlePageChange}
             onCreate={openCreateSheet}
@@ -491,7 +555,11 @@ const Dashboard: React.FC = () => {
           />
         )}
         {activeTab === "users" && (
-          <UsersTab users={users} loading={usersLoading} onToggleRole={handleToggleAdminRole} />
+          <UsersTab
+            users={users}
+            loading={usersLoading}
+            onToggleRole={handleToggleAdminRole}
+          />
         )}
         {activeTab === "analytics" && (
           <AnalyticsTab analytics={analytics} loading={analyticsLoading} />
@@ -506,7 +574,9 @@ const Dashboard: React.FC = () => {
         isUploading={isUploading}
         newColor={newColor}
         newSize={newSize}
-        onFormDataChange={(data) => setFormData((prev) => ({ ...prev, ...data }))}
+        onFormDataChange={(data) =>
+          setFormData((prev) => ({ ...prev, ...data }))
+        }
         onNewColorChange={setNewColor}
         onNewSizeChange={setNewSize}
         onAddColor={addColor}
