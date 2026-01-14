@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart";
 import { useProductStore } from "@/store/product";
@@ -10,9 +10,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ProductDetail from "./ProductDetail";
+import FilterSheet, { type FilterState } from "./components/FilterSheet";
 
 export type Category =
   | "All"
@@ -48,9 +50,39 @@ const Home: React.FC = () => {
     null
   );
 
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    colors: [],
+    sizes: [],
+    priceRange: { min: 0, max: 10000 },
+  });
+
   useEffect(() => {
     fetchProducts(1, selectedCategory);
   }, [selectedCategory, fetchProducts]);
+
+  const filteredProducts = useMemo(() => {
+    let result = [...products];
+
+    if (filters.colors.length > 0) {
+      result = result.filter((product) =>
+        product.variants?.some((variant) =>
+          filters.colors.includes(variant.color)
+        )
+      );
+    }
+
+    if (filters.sizes.length > 0) {
+      result = result.filter((product) => {
+        const productSizes = product.sizes || [];
+        return filters.sizes.some((size) => productSizes.includes(size));
+      });
+    }
+
+    return result;
+  }, [products, filters]);
+
+  const totalFiltersCount = filters.colors.length + filters.sizes.length;
 
   const handleCategoryChange = (category: Category) => {
     setSelectedCategory(category);
@@ -140,31 +172,96 @@ const Home: React.FC = () => {
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
           <p className="text-sm sm:text-base text-slate-600">
-            {pagination.total} product{pagination.total !== 1 ? "s" : ""}
+            {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
             {selectedCategory !== "All" && (
               <span className="font-medium">
                 {" "}
                 in <span className="text-primary">{selectedCategory}</span>
               </span>
             )}
+            {totalFiltersCount > 0 && (
+              <span className="font-medium">
+                {" "}
+                matching <span className="text-primary">{totalFiltersCount} filter{totalFiltersCount > 1 ? "s" : ""}</span>
+              </span>
+            )}
           </p>
-          {selectedCategory !== "All" && (
+          <div className="flex items-center gap-2">
+            {totalFiltersCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilters({ colors: [], sizes: [], priceRange: { min: 0, max: 10000 } });
+                }}
+                className="text-slate-500 hover:text-slate-700"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Clear ({totalFiltersCount})
+              </Button>
+            )}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setSelectedCategory("All")}
-              className="text-slate-500 hover:text-slate-700"
+              onClick={() => setFilterOpen(true)}
+              className={totalFiltersCount > 0 ? "border-primary text-primary" : ""}
             >
-              <X className="w-4 h-4 mr-1" />
-              Clear filter
+              <Filter className="w-4 h-4 mr-1" />
+              Filters
+              {totalFiltersCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-primary text-white text-xs rounded-full">
+                  {totalFiltersCount}
+                </span>
+              )}
             </Button>
-          )}
+          </div>
         </div>
 
-        {products.length > 0 ? (
+        {totalFiltersCount > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {filters.colors.map((color) => (
+              <span
+                key={color}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm rounded-full"
+              >
+                Color: {color}
+                <button
+                  onClick={() =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      colors: prev.colors.filter((c) => c !== color),
+                    }))
+                  }
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+            {filters.sizes.map((size) => (
+              <span
+                key={size}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm rounded-full"
+              >
+                Size: {size}
+                <button
+                  onClick={() =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      sizes: prev.sizes.filter((s) => s !== size),
+                    }))
+                  }
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {filteredProducts.length > 0 ? (
           <>
             <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {products.map((product) => {
+              {filteredProducts.map((product) => {
                 return (
                   <div
                     key={product.id}
@@ -314,16 +411,33 @@ const Home: React.FC = () => {
               No products found
             </h3>
             <p className="text-slate-500 mb-4">
-              {selectedCategory !== "All"
+              {totalFiltersCount > 0
+                ? "No products match your selected filters"
+                : selectedCategory !== "All"
                 ? `No products in the "${selectedCategory}" category`
                 : "No products available"}
             </p>
-            <Button onClick={() => setSelectedCategory("All")}>
-              View All Products
+            <Button
+              onClick={() => {
+                setSelectedCategory("All");
+                setFilters({ colors: [], sizes: [], priceRange: { min: 0, max: 10000 } });
+              }}
+            >
+              Clear All Filters
             </Button>
           </div>
         )}
       </main>
+
+      <FilterSheet
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onClearAll={() => {
+          setFilters({ colors: [], sizes: [], priceRange: { min: 0, max: 10000 } });
+        }}
+      />
 
       <Dialog
         open={!!selectedProductId}

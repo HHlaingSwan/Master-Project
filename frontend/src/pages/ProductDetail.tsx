@@ -37,11 +37,20 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const availableColors =
-    selectedProduct?.variants?.map((v) => ({
-      name: v.color,
-      code: v.colorCode,
-    })) || [];
+  const availableColors = React.useMemo(() => {
+    if (!selectedProduct?.variants) return [];
+    const seen = new Set<string>();
+    return selectedProduct.variants
+      .map((v) => ({
+        name: v.color,
+        code: v.colorCode,
+      }))
+      .filter((color) => {
+        if (seen.has(color.name)) return false;
+        seen.add(color.name);
+        return true;
+      });
+  }, [selectedProduct?.variants]);
   const availableSizes = selectedProduct?.sizes || [];
 
   const [selectedColor, setSelectedColor] = useState<{
