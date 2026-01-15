@@ -77,11 +77,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   }) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axiosInstance.post<{ data: { user: User } }>(
-        "/register",
-        credentials
-      );
-      if (response.data.data) {
+      const response = await axiosInstance.post<any>("/register", credentials);
+      if (response.data.success) {
         window.location.href = "/login";
       }
     } catch (error) {
