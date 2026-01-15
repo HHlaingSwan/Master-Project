@@ -31,6 +31,9 @@ app.use("/api", uploadRouter);
 app.use("/api/users", userRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/orders", orderRouter);
+app.use("/health", (req, res) => {
+  res.status(200).send({ message: "Server is running" });
+});
 
 app.listen(PORT, async () => {
   try {
