@@ -37,6 +37,8 @@ export const register = async (req, res) => {
       message: "User created successfully",
     });
   } catch (error) {
+    console.log(error);
+
     res.status(500).send({ message: "Error in register", error });
   }
 };
@@ -73,6 +75,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log(error);
     res.status(500).send({ message: "Error in Login", error });
   }
 };
@@ -175,18 +178,24 @@ export const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(200).send({
         success: true,
-        message: "If an account exists with this email, a password reset link will be sent.",
+        message:
+          "If an account exists with this email, a password reset link will be sent.",
       });
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
-    const resetLink = `${CLIENT_URL}/reset-password/${resetToken}?email=${encodeURIComponent(email)}`;
+    const resetLink = `${CLIENT_URL}/reset-password/${resetToken}?email=${encodeURIComponent(
+      email
+    )}`;
 
     const emailResult = await sendPasswordResetEmail(email, resetLink);
 
@@ -199,11 +208,14 @@ export const forgotPassword = async (req, res) => {
 
     res.status(200).send({
       success: true,
-      message: "If an account exists with this email, a password reset link will be sent.",
+      message:
+        "If an account exists with this email, a password reset link will be sent.",
     });
   } catch (error) {
     console.error("Error in forgotPassword:", error);
-    res.status(500).send({ message: "Error processing forgot password request", error });
+    res
+      .status(500)
+      .send({ message: "Error processing forgot password request", error });
   }
 };
 
@@ -212,7 +224,9 @@ export const resetPassword = async (req, res) => {
     const { token, email, newPassword } = req.body;
 
     if (!token || !email || !newPassword) {
-      return res.status(400).send({ message: "Token, email, and new password are required" });
+      return res
+        .status(400)
+        .send({ message: "Token, email, and new password are required" });
     }
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -224,7 +238,9 @@ export const resetPassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).send({ message: "Invalid or expired reset token" });
+      return res
+        .status(400)
+        .send({ message: "Invalid or expired reset token" });
     }
 
     const salt = await bcrypt.genSalt(10);

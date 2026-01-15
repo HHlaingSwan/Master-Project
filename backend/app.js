@@ -31,8 +31,10 @@ app.use("/api", uploadRouter);
 app.use("/api/users", userRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/orders", orderRouter);
+
+// Health check endpoint
 app.use("/health", (req, res) => {
-  res.status(200).send({ message: "Server is running" });
+  res.send("Server is running");
 });
 
 app.listen(PORT, async () => {
