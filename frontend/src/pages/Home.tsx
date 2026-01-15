@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart";
-import { useProductStore } from "@/store/product";
+import { useProductStore, type Product } from "@/store/product";
 import {
   ShoppingCart,
   Star,
@@ -46,9 +46,7 @@ const Home: React.FC = () => {
   } = useProductStore();
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [clickedProduct, setClickedProduct] = useState<string | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(
-    null
-  );
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -266,7 +264,7 @@ const Home: React.FC = () => {
                   <div
                     key={product.id}
                     className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group cursor-pointer"
-                    onClick={() => setSelectedProductId(product.id)}
+                    onClick={() => setSelectedProduct(product)}
                   >
                     <div className="relative aspect-square overflow-hidden bg-slate-100">
                       <img
@@ -308,10 +306,10 @@ const Home: React.FC = () => {
                               ? "bg-green-500 text-white scale-95"
                               : "bg-white text-slate-900 hover:bg-slate-100"
                           }`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setSelectedProductId(product.id);
-                          }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedProduct(product);
+                            }}
                         >
                           {clickedProduct === product.id ? (
                             <>
@@ -440,14 +438,14 @@ const Home: React.FC = () => {
       />
 
       <Dialog
-        open={!!selectedProductId}
-        onOpenChange={(open) => !open && setSelectedProductId(null)}
+        open={!!selectedProduct}
+        onOpenChange={(open) => !open && setSelectedProduct(null)}
       >
         <DialogContent className="p-0 min-w-6xl max-h-[90vh] overflow-y-auto">
-          {selectedProductId && (
+          {selectedProduct && (
             <ProductDetail
-              id={selectedProductId}
-              onBack={() => setSelectedProductId(null)}
+              product={selectedProduct}
+              onBack={() => setSelectedProduct(null)}
               onAddToCart={(product, color, size, quantity, image) => {
                 addToCart({
                   id: product.id as unknown as number,
@@ -461,7 +459,7 @@ const Home: React.FC = () => {
                 });
                 setClickedProduct(product.id);
                 setTimeout(() => setClickedProduct(null), 1500);
-                setSelectedProductId(null);
+                setSelectedProduct(null);
               }}
             />
           )}

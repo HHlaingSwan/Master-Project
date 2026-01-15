@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import axiosInstance from "@/api";
 import { toast } from "@/lib/toast";
-import { Package, Users, BarChart3 } from "lucide-react";
+import { Package, Users, BarChart3, ShoppingBag } from "lucide-react";
 import ProductsTab from "./components/ProductsTab";
 import UsersTab from "./components/UsersTab";
 import AnalyticsTab from "./components/AnalyticsTab";
+import OrdersTab from "./components/OrdersTab";
 import ProductFormSheet from "./components/ProductFormSheet";
 import DeleteDialog from "./components/DeleteDialog";
 
@@ -75,7 +76,7 @@ interface ProductFormData {
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    "products" | "users" | "analytics"
+    "products" | "users" | "analytics" | "orders"
   >("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -529,6 +530,14 @@ const Dashboard: React.FC = () => {
                 <BarChart3 className="w-4 h-4" />
                 Analytics
               </Button>
+              <Button
+                variant={activeTab === "orders" ? "default" : "outline"}
+                onClick={() => setActiveTab("orders")}
+                className="gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Orders
+              </Button>
             </div>
           </div>
         </div>
@@ -559,6 +568,7 @@ const Dashboard: React.FC = () => {
         {activeTab === "analytics" && (
           <AnalyticsTab analytics={analytics} loading={analyticsLoading} />
         )}
+        {activeTab === "orders" && <OrdersTab isAdmin={true} />}
       </main>
 
       <ProductFormSheet

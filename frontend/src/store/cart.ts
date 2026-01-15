@@ -17,6 +17,7 @@ interface CartState {
   addToCart: (item: Omit<CartItem, "quantity"> & { quantity?: number; maxQuantity?: number }) => void;
   removeFromCart: (itemId: number) => void;
   updateQuantity: (itemId: number, quantity: number) => void;
+  clearCart: () => void;
 }
 
 export const useCartStore = create<CartState>((set) => ({
@@ -61,4 +62,5 @@ export const useCartStore = create<CartState>((set) => ({
         i.id === itemId ? { ...i, quantity: Math.max(0, quantity) } : i
       ),
     })),
+  clearCart: () => set({ items: [] }),
 }));

@@ -83,18 +83,18 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, loading }) => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={analytics.mostBuyingProducts}
+                  data={analytics.mostBuyingProducts as any[]}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} (${(percent * 100).toFixed(0)}%)`
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name || ''} (${((percent || 0) * 100).toFixed(0)}%)`
                   }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="sold"
                 >
-                  {analytics.mostBuyingProducts.map((entry, index) => (
+                  {analytics.mostBuyingProducts.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

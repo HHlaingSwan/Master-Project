@@ -20,12 +20,14 @@ import {
 import { useCartStore } from "@/store/cart";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
+import CheckoutDialog from "@/pages/components/CheckoutDialog";
 
 const Navbar: React.FC = () => {
   const { items, removeFromCart, updateQuantity } = useCartStore();
   const { isAuthenticated, authUser, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const cartTotal = items.reduce(
@@ -197,7 +199,10 @@ const Navbar: React.FC = () => {
                         ${cartTotal.toFixed(2)}
                       </span>
                     </div>
-                    <Button className="w-full h-10 sm:h-12 text-sm sm:text-lg font-semibold">
+                    <Button
+                      className="w-full h-10 sm:h-12 text-sm sm:text-lg font-semibold"
+                      onClick={() => setIsCheckoutOpen(true)}
+                    >
                       Proceed to Checkout
                     </Button>
                   </div>
@@ -274,6 +279,8 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <CheckoutDialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen} />
     </nav>
   );
 };

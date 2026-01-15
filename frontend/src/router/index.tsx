@@ -3,9 +3,9 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
-import ProductDetail from "../pages/ProductDetail";
 import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
+import OrdersPage from "../pages/OrdersPage";
 import Layout from "../components/Layout";
 
 const router = createBrowserRouter([
@@ -25,6 +25,10 @@ const router = createBrowserRouter([
       {
         path: "/profile",
         element: <Profile />,
+      },
+      {
+        path: "/orders",
+        element: <OrdersPage />,
       },
     ],
   },

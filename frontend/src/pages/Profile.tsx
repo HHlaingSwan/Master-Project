@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +9,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User, Mail, Lock, Save, ArrowLeft } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { User, Mail, Lock, Save, ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
+import { useOrderStore, type Order } from "@/store/order";
 import { toast } from "@/lib/toast";
 
 const Profile: React.FC = () => {
   const { authUser, updateNameAndEmail, changePassword } = useAuthStore();
+  const { orders, isLoading, fetchUserOrders, cancelOrder } = useOrderStore();
   const [formData, setFormData] = useState({
     name: authUser?.name || "",
     email: authUser?.email || "",
@@ -25,7 +34,9 @@ const Profile: React.FC = () => {
     newPassword: "",
     confirmPassword: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingState, setIsLoadingState] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const canChangePassword = useMemo(() => {
     if (!authUser?.lastPasswordChange) return true;
@@ -57,6 +68,10 @@ const Profile: React.FC = () => {
     return remaining > 0 ? Math.ceil(remaining / (1000 * 60 * 60)) : 0;
   }, [authUser?.lastProfileUpdate]);
 
+  useEffect(() => {
+    fetchUserOrders();
+  }, [fetchUserOrders]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -69,7 +84,7 @@ const Profile: React.FC = () => {
 
   const handleNameAndEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoadingState(true);
 
     try {
       await updateNameAndEmail(formData);
@@ -77,13 +92,13 @@ const Profile: React.FC = () => {
     } catch {
       toast.error("Failed to update profile");
     } finally {
-      setIsLoading(false);
+      setIsLoadingState(false);
     }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoadingState(true);
 
     try {
       await changePassword(passwordData);
@@ -96,8 +111,37 @@ const Profile: React.FC = () => {
     } catch {
       toast.error("Failed to update password");
     } finally {
-      setIsLoading(false);
+      setIsLoadingState(false);
     }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await cancelOrder(orderId);
+    } catch {
+      // Error handled in store
+    }
+  };
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsDetailOpen(true);
+  };
+
+  const STATUS_COLORS: Record<string, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    processing: "bg-blue-100 text-blue-700",
+    shipped: "bg-purple-100 text-purple-700",
+    delivered: "bg-green-100 text-green-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+
+  const STATUS_ICONS: Record<string, React.ReactNode> = {
+    pending: <Clock className="w-3.5 h-3.5" />,
+    processing: <Clock className="w-3.5 h-3.5" />,
+    shipped: <Truck className="w-3.5 h-3.5" />,
+    delivered: <CheckCircle className="w-3.5 h-3.5" />,
+    cancelled: <XCircle className="w-3.5 h-3.5" />,
   };
 
   return (
@@ -178,12 +222,112 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" disabled={isLoadingState}>
                       <Save className="w-4 h-4 mr-2" />
-                      {isLoading ? "Saving..." : "Save Changes"}
+                      {isLoadingState ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </form>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Order History
+              </CardTitle>
+              <CardDescription>
+                View and track your orders
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500">No orders yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div
+                      key={order._id}
+                      className="border border-slate-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                            {order._id}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            {new Date(order.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                            STATUS_COLORS[order.status]
+                          }`}
+                        >
+                          {STATUS_ICONS[order.status]}
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-3">
+                        {order.items.slice(0, 2).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span className="text-slate-600 truncate max-w-[70%]">
+                              {item.name}
+                              {item.color && ` (${item.color})`}
+                              {item.size && ` (${item.size})`}
+                              {" x "}
+                              {item.quantity}
+                            </span>
+                            <span className="font-medium">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                        {order.items.length > 2 && (
+                          <p className="text-xs text-slate-500">
+                            +{order.items.length - 2} more items
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <span className="font-semibold text-slate-900">
+                          Total: ${order.totalAmount.toFixed(2)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewOrder(order)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Details
+                          </Button>
+                          {order.status === "pending" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCancelOrder(order._id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -248,9 +392,9 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" disabled={isLoadingState}>
                       <Save className="w-4 h-4 mr-2" />
-                      {isLoading ? "Updating..." : "Update Password"}
+                      {isLoadingState ? "Updating..." : "Update Password"}
                     </Button>
                   </div>
                 </form>
@@ -259,6 +403,118 @@ const Profile: React.FC = () => {
           </Card>
         </div>
       </main>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Order Details
+            </DialogTitle>
+            <DialogDescription>
+              Order ID: <span className="font-mono">{selectedOrder?._id}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-500">Order Date</p>
+                  <p className="text-sm">
+                    {new Date(selectedOrder.createdAt).toLocaleDateString()} at{" "}
+                    {new Date(selectedOrder.createdAt).toLocaleTimeString()}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-500">Status</p>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      STATUS_COLORS[selectedOrder.status]
+                    }`}
+                  >
+                    {STATUS_ICONS[selectedOrder.status]}
+                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+
+              {selectedOrder.shippingAddress && (
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    Shipping Address
+                  </h4>
+                  <p className="text-sm text-slate-600">
+                    {selectedOrder.shippingAddress.street}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}{" "}
+                    {selectedOrder.shippingAddress.zipCode}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    {selectedOrder.shippingAddress.country}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <h4 className="font-medium text-slate-900 mb-3">Order Items</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="text-left py-2 px-3 font-medium text-slate-600">Item</th>
+                        <th className="text-center py-2 px-3 font-medium text-slate-600">Qty</th>
+                        <th className="text-right py-2 px-3 font-medium text-slate-600">Price</th>
+                        <th className="text-right py-2 px-3 font-medium text-slate-600">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedOrder.items.map((item, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              {item.image && (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                              )}
+                              <div>
+                                <p className="font-medium">{item.name}</p>
+                                {(item.color || item.size) && (
+                                  <p className="text-xs text-slate-500">
+                                    {item.color} {item.size}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center py-2 px-3">{item.quantity}</td>
+                          <td className="text-right py-2 px-3">${item.price.toFixed(2)}</td>
+                          <td className="text-right py-2 px-3 font-medium">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-50">
+                      <tr className="border-t">
+                        <td colSpan={3} className="py-2 px-3 text-right font-semibold">Total Amount</td>
+                        <td className="py-2 px-3 text-right font-bold text-lg">
+                          ${selectedOrder.totalAmount.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

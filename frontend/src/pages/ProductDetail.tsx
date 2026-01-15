@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart";
-import { useProductStore, type Product } from "@/store/product";
+import { type Product } from "@/store/product";
 import { toast } from "@/lib/toast";
 import { Heart, Star } from "lucide-react";
 import {
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 interface ProductDetailProps {
-  id: string;
+  product: Product;
   onBack?: () => void;
   onAddToCart?: (
     product: Product,
@@ -27,17 +27,14 @@ interface ProductDetailProps {
 }
 
 const ProductDetail: React.FC<ProductDetailProps> = ({
-  id,
+  product: selectedProduct,
   onBack,
   onAddToCart,
 }) => {
   const { addToCart } = useCartStore();
-  const { selectedProduct, isLoading, fetchProductById, clearSelectedProduct } =
-    useProductStore();
-  const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const availableColors = React.useMemo(() => {
+  const availableColors = useMemo(() => {
     if (!selectedProduct?.variants) return [];
     const seen = new Set<string>();
     return selectedProduct.variants
@@ -78,26 +75,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
   }, [selectedProduct?.sizes]);
 
   useEffect(() => {
-    if (id) {
-      const cleanId = id.startsWith("#") ? id.slice(1) : id;
-      fetchProductById(cleanId);
-    }
-    return () => clearSelectedProduct();
-  }, [id, fetchProductById, clearSelectedProduct]);
+  }, [selectedProduct]);
 
-  if (isLoading || !selectedProduct) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const variantImages = selectedProduct.variants?.find(
-    (v) => v.color === selectedColor.name
-  )?.images || [selectedProduct.image];
-
-  const currentImage = variantImages[activeImage] || selectedProduct.image;
+  const currentImage = selectedProduct.image;
 
   const handleAddToCart = () => {
     if (!selectedProduct) return;
@@ -228,7 +208,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
                     key={color.name}
                     onClick={() => {
                       setSelectedColor(color);
-                      setActiveImage(0);
                     }}
                     className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all ${
                       selectedColor.name === color.name
