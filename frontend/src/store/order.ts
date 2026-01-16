@@ -50,6 +50,15 @@ interface OrderState {
     delivered: number;
     cancelled: number;
   };
+  pagination: {
+    total: number;
+    page: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  currentPage: number;
+  currentStatus: string;
 
   createOrder: (items: OrderItem[], totalAmount: number, shippingAddress: any) => Promise<void>;
   fetchUserOrders: () => Promise<void>;
@@ -79,6 +88,15 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     delivered: 0,
     cancelled: 0,
   },
+  pagination: {
+    total: 0,
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
+  currentPage: 1,
+  currentStatus: "all",
 
   createOrder: async (items, totalAmount, shippingAddress) => {
     set({ isLoading: true, error: null });
@@ -120,6 +138,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       set({
         orders: response.data.data,
         statusCounts: response.data.statusCounts,
+        pagination: response.data.pagination,
+        currentPage: page,
+        currentStatus: status,
         isLoading: false,
       });
       return response.data.pagination;
@@ -149,7 +170,8 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     try {
       await axiosInstance.put(`/orders/${orderId}/status`, { status });
       toast.success("Order status updated");
-      get().fetchAllOrders();
+      const { currentPage, currentStatus, fetchAllOrders } = get();
+      await fetchAllOrders(currentPage, currentStatus);
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to update order";
       set({ error: message, isLoading: false });
