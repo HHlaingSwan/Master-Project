@@ -15,6 +15,8 @@ import {
   Eye,
   Package,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import axiosInstance from "@/api";
 
@@ -41,6 +43,17 @@ interface Order {
 interface UsersTabProps {
   users: User[];
   loading: boolean;
+  pagination: {
+    total: number;
+    page: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  paginationLoading: boolean;
+  searchTerm: string;
+  onSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPageChange: (page: number) => void;
   onToggleRole: (userId: string, currentRole: boolean) => void;
 }
 
@@ -195,18 +208,16 @@ const UserOrdersDialog: React.FC<UserOrdersDialogProps> = ({
 const UsersTab: React.FC<UsersTabProps> = ({
   users,
   loading,
+  pagination,
+  paginationLoading,
+  searchTerm,
+  onSearch,
+  onPageChange,
   onToggleRole,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [ordersDialogTrigger, setOrdersDialogTrigger] = useState(0);
-
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleViewOrders = (user: User) => {
     setSelectedUser(user);
@@ -226,20 +237,20 @@ const UsersTab: React.FC<UsersTabProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">
-          All Users ({users.length})
+          All Users ({pagination.total})
         </h2>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Search users..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={onSearch}
             className="pl-9 w-64"
           />
         </div>
       </div>
 
-      {filteredUsers.length === 0 ? (
+      {users.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-24 h-24 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
             <Users className="w-10 h-10 text-slate-300" />
@@ -249,81 +260,119 @@ const UsersTab: React.FC<UsersTabProps> = ({
           </h3>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">
-                  User
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">
-                  Role
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">
-                  Joined
-                </th>
-                <th className="text-right py-3 px-4 font-medium text-slate-600">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user._id} className="border-t hover:bg-slate-50">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{user.name}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    {user.isAdmin ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        <Crown className="w-3 h-3" />
-                        Admin
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                        <Shield className="w-3 h-3" />
-                        User
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-slate-500">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewOrders(user)}
-                        title="View Orders"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant={user.isAdmin ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => onToggleRole(user._id, user.isAdmin)}
-                      >
-                        {user.isAdmin ? "Remove Admin" : "Make Admin"}
-                      </Button>
-                    </div>
-                  </td>
+        <>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    User
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Role
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Joined
+                  </th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user._id} className="border-t hover:bg-slate-50">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{user.name}</p>
+                          <p className="text-xs text-slate-500">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      {user.isAdmin ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                          <Crown className="w-3 h-3" />
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                          <Shield className="w-3 h-3" />
+                          User
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewOrders(user)}
+                          title="View Orders"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant={user.isAdmin ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => onToggleRole(user._id, user.isAdmin)}
+                        >
+                          {user.isAdmin ? "Remove Admin" : "Make Admin"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {pagination.totalPages > 1 && (
+            <div
+              className={`flex items-center justify-center gap-2 mt-6 ${
+                paginationLoading ? "opacity-50" : ""
+              }`}
+            >
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => onPageChange(pagination.page - 1)}
+                disabled={!pagination.hasPrevPage || paginationLoading}
+                className="h-10 w-10"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              <span className="text-sm text-slate-600 px-2">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => onPageChange(pagination.page + 1)}
+                disabled={!pagination.hasNextPage || paginationLoading}
+                className="h-10 w-10"
+              >
+                {paginationLoading ? (
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <UserOrdersDialog

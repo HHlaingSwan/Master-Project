@@ -104,6 +104,14 @@ const Dashboard: React.FC = () => {
     outOfStock: 0,
     totalValue: 0,
   });
+  const [usersPagination, setUsersPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [formData, setFormData] = useState<ProductFormData>({
     productId: "",
     name: "",
@@ -124,12 +132,14 @@ const Dashboard: React.FC = () => {
   const [newSize, setNewSize] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usersSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [usersSearchTerm, setUsersSearchTerm] = useState("");
 
   useEffect(() => {
     if (activeTab === "products") {
       fetchProducts(1, searchTerm);
     } else if (activeTab === "users") {
-      fetchUsers();
+      fetchUsers(1, usersSearchTerm);
     } else if (activeTab === "analytics") {
       fetchAnalytics();
     }
@@ -165,15 +175,30 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    setUsersLoading(true);
+  const fetchUsers = async (page = 1, search = "", isPagination = false) => {
+    if (isPagination) {
+      setPaginationLoading(true);
+    } else {
+      setUsersLoading(true);
+    }
     try {
-      const response = await axiosInstance.get("/users");
+      const response = await axiosInstance.get("/users", {
+        params: {
+          page,
+          limit: 10,
+          search: search || undefined,
+        },
+      });
       setUsers(response.data.data);
+      setUsersPagination(response.data.pagination);
     } catch {
       toast.error("Failed to fetch users");
     } finally {
-      setUsersLoading(false);
+      if (isPagination) {
+        setPaginationLoading(false);
+      } else {
+        setUsersLoading(false);
+      }
     }
   };
 
@@ -200,7 +225,7 @@ const Dashboard: React.FC = () => {
       toast.success(
         `User ${!currentRole ? "promoted to" : "demoted from"} admin`
       );
-      fetchUsers();
+      fetchUsers(usersPagination.page, usersSearchTerm);
     } catch (error: any) {
       toast.error(error.response.data.message || "Failed to update user role");
     }
@@ -223,6 +248,25 @@ const Dashboard: React.FC = () => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       fetchProducts(newPage, searchTerm, true);
       window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleUsersSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUsersSearchTerm(value);
+
+    if (usersSearchTimeoutRef.current) {
+      clearTimeout(usersSearchTimeoutRef.current);
+    }
+
+    usersSearchTimeoutRef.current = setTimeout(() => {
+      fetchUsers(1, value);
+    }, 300);
+  };
+
+  const handleUsersPageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= usersPagination.totalPages) {
+      fetchUsers(newPage, usersSearchTerm, true);
     }
   };
 
@@ -572,6 +616,11 @@ const Dashboard: React.FC = () => {
           <UsersTab
             users={users}
             loading={usersLoading}
+            pagination={usersPagination}
+            paginationLoading={paginationLoading}
+            searchTerm={usersSearchTerm}
+            onSearch={handleUsersSearch}
+            onPageChange={handleUsersPageChange}
             onToggleRole={handleToggleAdminRole}
           />
         )}

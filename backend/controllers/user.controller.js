@@ -2,11 +2,36 @@ import User from "../model/user.model.js";
 
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password"); // Exclude password field
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search;
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query).select("-password").skip(skip).limit(limit);
+
     res.status(200).send({
       success: true,
       message: "Users retrieved successfully",
       data: users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     res.status(500).send({ message: "Error in getUsers", error });
