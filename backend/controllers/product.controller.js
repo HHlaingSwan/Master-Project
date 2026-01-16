@@ -21,6 +21,30 @@ export const getAllProducts = async (req, res) => {
     const total = await Product.countDocuments(query);
     const products = await Product.find(query).skip(skip).limit(limit);
 
+    const stats = await Product.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalProducts: { $sum: 1 },
+          inStock: {
+            $sum: { $cond: [{ $gt: ["$stock", 0] }, 1, 0] },
+          },
+          outOfStock: {
+            $sum: { $cond: [{ $eq: ["$stock", 0] }, 1, 0] },
+          },
+          totalValue: { $sum: { $multiply: ["$price", "$stock"] } },
+        },
+      },
+    ]);
+
+    const productStats = stats[0] || {
+      totalProducts: 0,
+      inStock: 0,
+      outOfStock: 0,
+      totalValue: 0,
+    };
+
     res.status(200).send({
       success: true,
       data: products,
@@ -31,6 +55,12 @@ export const getAllProducts = async (req, res) => {
         totalPages: Math.ceil(total / limit),
         hasNextPage: page < Math.ceil(total / limit),
         hasPrevPage: page > 1,
+      },
+      stats: {
+        totalProducts: productStats.totalProducts,
+        inStock: productStats.inStock,
+        outOfStock: productStats.outOfStock,
+        totalValue: productStats.totalValue,
       },
     });
   } catch (error) {

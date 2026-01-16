@@ -28,7 +28,7 @@ export const register = async (req, res) => {
       { userId: newUser._id, isAdmin: newUser.isAdmin },
       JWT_SECRET,
       {
-        expiresIn: JWT_EXPIRES_IN,
+        expiresIn: JWT_EXPIRES_IN || "7d",
       }
     );
 
@@ -63,7 +63,7 @@ export const login = async (req, res) => {
       { userId: user._id, isAdmin: user.isAdmin },
       JWT_SECRET,
       {
-        expiresIn: JWT_EXPIRES_IN,
+        expiresIn: JWT_EXPIRES_IN || "7d",
       }
     );
     res.status(200).send({

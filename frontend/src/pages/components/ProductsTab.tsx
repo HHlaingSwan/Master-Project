@@ -42,6 +42,12 @@ interface ProductsTabProps {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
+  stats: {
+    totalProducts: number;
+    inStock: number;
+    outOfStock: number;
+    totalValue: number;
+  };
   paginationLoading: boolean;
   loading: boolean;
   onSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -260,6 +266,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
   products,
   searchTerm,
   pagination,
+  stats,
   paginationLoading,
   loading,
   onSearch,
@@ -268,13 +275,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const totalProducts = pagination.total;
-  const inStock = products.filter((p) => (p.stock || 0) > 0).length;
-  const outOfStock = products.filter((p) => (p.stock || 0) === 0).length;
-  const totalValue = products.reduce(
-    (sum, p) => sum + p.price * (p.stock || 0),
-    0
-  );
+  const { totalProducts, inStock, outOfStock, totalValue } = stats;
 
   return (
     <>

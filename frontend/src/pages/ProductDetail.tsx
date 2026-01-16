@@ -34,6 +34,23 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
   const { addToCart } = useCartStore();
   const [quantity, setQuantity] = useState(1);
 
+  const stock = selectedProduct.stock || 0;
+  const isOutOfStock = stock === 0;
+  const canIncrease = quantity < stock;
+  const canDecrease = quantity > 1;
+
+  const handleIncrement = () => {
+    if (canIncrease) {
+      setQuantity(quantity + 1);
+    }
+  };
+
+  const handleDecrement = () => {
+    if (canDecrease) {
+      setQuantity(quantity - 1);
+    }
+  };
+
   const availableColors = useMemo(() => {
     if (!selectedProduct?.variants) return [];
     const seen = new Set<string>();
@@ -164,8 +181,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
                 ))}
               </div>
               <span className="text-xs sm:text-sm text-slate-500">
-                {selectedProduct.rating.toFixed(1)} (
-                {selectedProduct.stock || 42} reviews)
+                {selectedProduct.rating.toFixed(1)} ({stock} reviews)
               </span>
             </div>
           </div>
@@ -263,8 +279,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 sm:h-10 sm:w-10 rounded-r-none"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-r-none disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleDecrement}
+                disabled={!canDecrease || isOutOfStock}
               >
                 <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
               </Button>
@@ -274,28 +291,31 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 sm:h-10 sm:w-10 rounded-l-none"
-                onClick={() => setQuantity(quantity + 1)}
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-l-none disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleIncrement}
+                disabled={!canIncrease || isOutOfStock}
               >
                 <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
               </Button>
             </div>
-            <span className="text-xs sm:text-sm text-slate-500">
-              {selectedProduct.stock || 15} in stock
+            <span className={`text-xs sm:text-sm ${isOutOfStock ? "text-red-500 font-medium" : "text-slate-500"}`}>
+              {isOutOfStock ? "Out of stock" : `${stock} in stock`}
             </span>
           </div>
 
           <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
             <Button
-              className="flex-1 h-10 sm:h-12 text-sm sm:text-lg font-semibold"
+              className="flex-1 h-10 sm:h-12 text-sm sm:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAddToCart}
+              disabled={isOutOfStock}
             >
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
-              Add to Cart
+              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </Button>
             <Button
               variant="outline"
-              className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-lg"
+              className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isOutOfStock}
             >
               Buy Now
             </Button>

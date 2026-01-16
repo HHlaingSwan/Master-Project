@@ -1,5 +1,6 @@
 import Order from "../model/order.model.js";
 import User from "../model/user.model.js";
+import Product from "../model/product.model.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -29,6 +30,14 @@ export const createOrder = async (req, res) => {
     });
 
     await order.save();
+
+    for (const item of order.items) {
+      const product = await Product.findOne({ productId: item.productId });
+      if (product) {
+        product.stock = Math.max(0, product.stock - item.quantity);
+        await product.save();
+      }
+    }
 
     res.status(201).send({
       success: true,
@@ -217,6 +226,14 @@ export const cancelOrder = async (req, res) => {
 
     order.status = "cancelled";
     await order.save();
+
+    for (const item of order.items) {
+      const product = await Product.findOne({ productId: item.productId });
+      if (product) {
+        product.stock += item.quantity;
+        await product.save();
+      }
+    }
 
     res.status(200).send({
       success: true,

@@ -98,6 +98,12 @@ const Dashboard: React.FC = () => {
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [productStats, setProductStats] = useState({
+    totalProducts: 0,
+    inStock: 0,
+    outOfStock: 0,
+    totalValue: 0,
+  });
   const [formData, setFormData] = useState<ProductFormData>({
     productId: "",
     name: "",
@@ -145,6 +151,9 @@ const Dashboard: React.FC = () => {
       });
       setProducts(response.data.data);
       setPagination(response.data.pagination);
+      if (response.data.stats) {
+        setProductStats(response.data.stats);
+      }
     } catch {
       toast.error("Failed to fetch products");
     } finally {
@@ -549,6 +558,7 @@ const Dashboard: React.FC = () => {
             products={products}
             searchTerm={searchTerm}
             pagination={pagination}
+            stats={productStats}
             paginationLoading={paginationLoading}
             loading={productsLoading}
             onSearch={handleSearch}
